@@ -337,21 +337,27 @@ try {
 
     const WATER_SPRING = {
         spacing: 5,
-        tension: 0.028,
-        damping: 0.03,
-        spread: 0.22,
+        tension: 0.022,
+        damping: 0.05,
+        spread: 0.16,
         spreadPasses: 8,
         splashRadius: 6,
         splashTransfer: 0.16,
         entryDamping: 0.5,
+        entryMinImpact: 18,     
+        entrySplashScale: 0.5, 
         pressBand: 90,
         weightPush: 6,
         idleAmplitude: 1,
         idleFreq: WATER_WAVE.freq * 3.4,
         idleSpeed: WATER_WAVE.speed * 1.7,
         maxDisplacement: 42,
-        tensionBand: 26,
-        surfaceTension: 260,
+        tensionBand: 30,
+        surfaceTension: 270,
+        skimBand: 26,          
+        skimLift: 340,         
+        skimAccelMul: 0.85,    
+        skimSpeedMul: 1.15,    
     };
 
     class WaterSurfaceSegment {
@@ -439,6 +445,14 @@ try {
             }
             for (let i = 0; i < this.count; i++) {
                 this.heights[i] = constrain(this.heights[i], -WATER_SPRING.maxDisplacement, WATER_SPRING.maxDisplacement);
+            }
+            
+            //tether to the adjacent blocks so no gap
+            if (this.count > 1) {
+                this.heights[0] = 0;
+                this.velocities[0] = 0;
+                this.heights[this.count - 1] = 0;
+                this.velocities[this.count - 1] = 0;
             }
         }
     }
@@ -608,9 +622,9 @@ try {
             return;
         }
         if (player.inWater && !player.wasInWater) {
-            const impactSpeed = Math.max(player.v.y, 40);
+            const impactSpeed = Math.max(player.v.y, WATER_SPRING.entryMinImpact) * WATER_SPRING.entrySplashScale;
             splashWaterSurface(centerX, impactSpeed);
-            spawnWaterLightDisturbance(centerX, constrain(impactSpeed * 0.5, 16, 90));
+            spawnWaterLightDisturbance(centerX, constrain(impactSpeed * 0.5, 10, 60));
             if (player.v.y > 0) {
                 player.v.y *= WATER_SPRING.entryDamping;
             }
@@ -950,14 +964,21 @@ try {
             this.inputs.right = (keys[39] || keys[68]);
             
             if (this.inWater) {
+                const centerX = this.x + this.w / 2;
+                const surfaceLine = waterSurfaceLineAt(centerX);
+                const headDepth = surfaceLine === null ? 999 : surfaceLine - this.y;
+                const atSurface = headDepth > 0 && headDepth < WATER_SPRING.skimBand;
+                const accelMul = atSurface ? WATER_SPRING.skimAccelMul : 0.35;
+                const speedMul = atSurface ? WATER_SPRING.skimSpeedMul : 0.7;
+
                 if (this.inputs.left) {
-                    this.v.x -= this.acceleration * 0.35 * dt;
+                    this.v.x -= this.acceleration * accelMul * dt;
                 } else if (this.inputs.right) {
-                    this.v.x += this.acceleration * 0.35 * dt;
+                    this.v.x += this.acceleration * accelMul * dt;
                 } else {
                     this.v.x *= 0.94;
                 }
-                this.v.x = constrain(this.v.x, -this.speed * 0.7, this.speed * 0.7);
+                this.v.x = constrain(this.v.x, -this.speed * speedMul, this.speed * speedMul);
                 this.x += this.v.x * dt;
                 this.action = "air";
                 return;
@@ -1006,27 +1027,34 @@ try {
         moveY: function(){
             this.inputs.up = (keys[38] || keys[87]);
             this.inputs.down = (keys[40] || keys[83]);
-            
+
             if (this.inWater) {
                 const centerX = this.x + this.w / 2;
                 const surfaceLine = waterSurfaceLineAt(centerX);
                 const headDepth = surfaceLine === null ? 999 : surfaceLine - this.y;
+
                 if (this.inputs.up) {
-                    //stronger swim up
-                    this.v.y -= this.jumpPow * 0.38 * dt;
+                    //swim up
+                    this.v.y -= this.jumpPow * 0.55 * dt;
                     const band = WATER_SPRING.tensionBand;
                     if (headDepth > 0 && headDepth < band) {
                         this.v.y += WATER_SPRING.surfaceTension * (1 - headDepth / band) * dt;
                     }
                 } else if (this.inputs.down) {
-                    //stronger swim down when holding down
+                    //swim down when holding down
                     this.v.y += this.jumpPow * 0.6 * dt;
                 } else {
-                    //slightly stronger natural sinking
-                    this.v.y += this.gravity * 0.18 * dt;
+                    //slight natural sinking
+                    this.v.y += this.gravity * 0.12 * dt;
                 }
+
+                const atSurface = headDepth > 0 && headDepth < WATER_SPRING.skimBand;
+                if (atSurface && !this.inputs.down && (this.inputs.left || this.inputs.right)) {
+                    this.v.y -= WATER_SPRING.skimLift * dt;
+                }
+
                 //no vertical damping (reduced)
-                this.v.y *= 0.985;
+                this.v.y *= 0.988;
                 this.y += this.v.y * dt;
                 this.action = "air";
                 return;
