@@ -28,20 +28,23 @@ try {
     let currentLevel = 0;
     let keys = {};
     let blocks = [];
-    //maps a water tile's world x (column) to the world y of that column's surface the topmost water tile above it. Rebuilt in mapSetup().
-    let waterSurfaceByColumn = {};
     const blockSize = 45;
     const tileSprite = typeof gfx !== "undefined" && gfx?.tiles?.A?.yyyy ? gfx.tiles.A.yyyy : null;
     const backdropSprite = typeof gfx !== "undefined" && gfx?.props?.backdrops?.dungeon ? gfx.props.backdrops.dungeon : null;
-    
+    //master animation clock in ms, advanced once per frame in render(); water code below reads this for wave motion
+    let frameTime = 0;
 
+    /*
+       WATER SYSTEM
+    */
+    //maps a water tile to the world tiles kinda
+    let waterSurfaceByColumn = {};
 
+    //water colors
     const waterPalette = {
         surface: "#eafeff",
         body: "#1f52b1",
     };
-
-    let frameTime = 0;
 
     const WATER_WAVE = {
         freq: 0.018,   
@@ -52,6 +55,7 @@ try {
 	const WATER_LIGHT_ANGLE_DEG = 22;
     const WATER_TILT_PER_ROW = -Math.tan(WATER_LIGHT_ANGLE_DEG * Math.PI / 180) * (blockSize / 9);
 
+    //light streaks
     class LightStreak {
         constructor(options = {}) {
             this.x = options.x ?? 0;
@@ -103,6 +107,7 @@ try {
     let lightStreaksWide = [];
     let lightStreaksFine = [];
 
+    //light ripples
     class LightRipple {
         constructor(options = {}) {
             this.x = options.x ?? 0;
@@ -231,6 +236,7 @@ try {
 
     let waterRipples = createRandomRipples(20);
 
+    //water tile rendering
     function drawWaterTile(x, y, w, h, topSurface) {
         const cols = 9;
         const rows = 9;
@@ -306,26 +312,7 @@ try {
         ctx.restore();
     }
 
-    function drawBackgroundArt() {
-        ctx.save();
-        ctx.fillStyle = "#111827";
-        ctx.fillRect(0, 0, width, height);
-
-        if (backdropSprite) {
-            const pixel = 5;
-            const spriteW = backdropSprite.w * pixel;
-            const spriteH = backdropSprite.h * pixel;
-            const offsetX = ((Math.floor(-cam.x * 0.08) % spriteW) + spriteW) % spriteW;
-            for (let x = -spriteW; x < width + spriteW; x += spriteW) {
-                for (let y = -spriteH; y < height + spriteH; y += spriteH) {
-                    backdropSprite.draw(ctx, x + offsetX, y, pixel);
-                }
-            }
-        }
-
-        ctx.restore();
-    }
-
+    //underwater screen distortion
     const UNDERWATER_DISTORT = {
         rowHeight: 3,
         amp: 5,    
@@ -335,6 +322,7 @@ try {
     let frameBuffer = null;
     let frameBufferCtx = null;
 
+    //surface spring simulation
     const WATER_SPRING = {
         spacing: 5,
         tension: 0.022,
@@ -536,6 +524,7 @@ try {
         return restY + surfaceRow * cellH;
     }
 
+    //bend the light streaks/ripples
     const WATER_LIGHT_BEND = {
         maxActive: 8,
         travelSpeed: 210,
@@ -614,6 +603,40 @@ try {
         return { bend, glow };
     }
 
+    //backdrop wobbles in sync with the above ripple from the player entering
+    const BG_RIPPLE = {
+        amp: 3.2,
+        radius: 460,
+        travelSpeed: WATER_LIGHT_BEND.travelSpeed * 1.35,
+        frontWidth: WATER_LIGHT_BEND.frontWidth * 2.4,
+        freq: WATER_LIGHT_BEND.freq * 0.6,
+        oscSpeed: WATER_LIGHT_BEND.oscSpeed,
+        decayRate: WATER_LIGHT_BEND.decayRate * 0.7,
+    };
+
+    function backgroundRippleBendAt(worldX, worldY) {
+        if (!waterLightDisturbances.length) {
+            return 0;
+        }
+        let bend = 0;
+        for (const disturbance of waterLightDisturbances) {
+            const lateral = worldX - disturbance.x;
+            const vertical = worldY - disturbance.restY;
+            const dist = Math.sqrt(lateral * lateral + vertical * vertical);
+            const radial = Math.exp(-(dist * dist) / (2 * BG_RIPPLE.radius * BG_RIPPLE.radius));
+            if (radial < 0.02) continue;
+            const front = disturbance.age * BG_RIPPLE.travelSpeed;
+            const wavefrontDist = dist - front;
+            const envelope = Math.exp(-(wavefrontDist * wavefrontDist) / (2 * BG_RIPPLE.frontWidth * BG_RIPPLE.frontWidth));
+            const settle = Math.exp(-disturbance.age * BG_RIPPLE.decayRate);
+            const magnitude = (disturbance.strength / 60) * radial * envelope * settle;
+            const ripple = Math.sin(wavefrontDist * BG_RIPPLE.freq - disturbance.age * BG_RIPPLE.oscSpeed);
+            bend += magnitude * ripple;
+        }
+        return constrain(bend, -1, 1) * BG_RIPPLE.amp;
+    }
+
+    //player an' water interaction 
     function updatePlayerWaterSpring(dt) {
         const centerX = player.x + player.w / 2;
         const segment = findWaterSegment(centerX);
@@ -643,7 +666,7 @@ try {
         player.wasInWater = player.inWater;
     }
 
-    
+    //render helpers for the underwater distortion pass
     function ensureFrameBuffer(pad) {
         const neededW = width + pad * 2;
         if (!frameBuffer || frameBuffer.width !== neededW || frameBuffer.height !== height) {
@@ -723,6 +746,88 @@ try {
         }
         ctx.restore();
     }
+
+    /* END WATER SYSTEM*/
+
+    /*
+       BACKGROUND RENDERING
+       Currently parallax. 
+       Distorts when water is over it etc
+    */
+    let bgFrameBuffer = null;
+    let bgFrameBufferCtx = null;
+
+    function ensureBgFrameBuffer(pad) {
+        const neededW = width + pad * 2;
+        if (!bgFrameBuffer || bgFrameBuffer.width !== neededW || bgFrameBuffer.height !== height) {
+            bgFrameBuffer = document.createElement("canvas");
+            bgFrameBuffer.width = neededW;
+            bgFrameBuffer.height = height;
+            bgFrameBufferCtx = bgFrameBuffer.getContext("2d");
+            bgFrameBufferCtx.imageSmoothingEnabled = false;
+        }
+    }
+
+    function drawBackgroundArt() {
+        //draw straight to canvas like before
+        if (!waterLightDisturbances.length) {
+            ctx.save();
+            ctx.fillStyle = "#111827";
+            ctx.fillRect(0, 0, width, height);
+
+            if (backdropSprite) {
+                const pixel = 5;
+                const spriteW = backdropSprite.w * pixel;
+                const spriteH = backdropSprite.h * pixel;
+                const offsetX = ((Math.floor(-cam.x * 0.08) % spriteW) + spriteW) % spriteW;
+                for (let x = -spriteW; x < width + spriteW; x += spriteW) {
+                    for (let y = -spriteH; y < height + spriteH; y += spriteH) {
+                        backdropSprite.draw(ctx, x + offsetX, y, pixel);
+                    }
+                }
+            }
+
+            ctx.restore();
+            return;
+        }
+    //ripple path
+        const pad = Math.ceil(BG_RIPPLE.amp) + 2;
+        ensureBgFrameBuffer(pad);
+
+        bgFrameBufferCtx.fillStyle = "#111827";
+        bgFrameBufferCtx.fillRect(0, 0, bgFrameBuffer.width, height);
+
+        if (backdropSprite) {
+            const pixel = 5;
+            const spriteW = backdropSprite.w * pixel;
+            const spriteH = backdropSprite.h * pixel;
+            const offsetX = ((Math.floor(-cam.x * 0.08) % spriteW) + spriteW) % spriteW;
+            for (let x = -pad - spriteW; x < width + pad + spriteW; x += spriteW) {
+                for (let y = -spriteH; y < height + spriteH; y += spriteH) {
+                    backdropSprite.draw(bgFrameBufferCtx, x + offsetX + pad, y, pixel);
+                }
+            }
+        }
+
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        const worldSampleX = cam.x;
+        const rowH = 4;
+        for (let y = 0; y < height; y += rowH) {
+            const rh = Math.min(rowH, height - y);
+            const worldY = y + cam.y - shake.y - height / 2;
+            const bend = backgroundRippleBendAt(worldSampleX, worldY);
+            const shift = constrain(Math.round(bend), -pad, pad);
+            ctx.drawImage(
+                bgFrameBuffer,
+                pad - shift, y, width, rh,
+                0, y, width, rh
+            );
+        }
+        ctx.restore();
+    }
+
+    /* END BACKGROUND RENDERING */
 
     const MAP = [
         [
@@ -1147,6 +1252,8 @@ try {
         }
     }
 
+    //part of the WATER SYSTEM above; kept here (not up there) only because it
+    //must be declared after Block, which it extends
     class WaterBlock extends Block {
         constructor(x, y, w, h) {
             super(x, y, w, h, "water");
