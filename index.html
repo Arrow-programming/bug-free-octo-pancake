@@ -35,12 +35,13 @@ try {
     let frameTime = 0;
 
     /*
-       WATER SYSTEM
+        WATER SYSTEM
     */
-    //maps a water tile to the world tiles kinda
+    
+    //maps a water tile's world x (column) to the world y of that column's surface the topmost water tile above it
     let waterSurfaceByColumn = {};
 
-    //water colors
+    //palette
     const waterPalette = {
         surface: "#eafeff",
         body: "#1f52b1",
@@ -107,7 +108,7 @@ try {
     let lightStreaksWide = [];
     let lightStreaksFine = [];
 
-    //light ripples
+    //ambient light ripples
     class LightRipple {
         constructor(options = {}) {
             this.x = options.x ?? 0;
@@ -346,6 +347,7 @@ try {
         skimLift: 340,         
         skimAccelMul: 0.85,    
         skimSpeedMul: 1.15,    
+        maxSwimSpeed: 480, 
     };
 
     class WaterSurfaceSegment {
@@ -524,7 +526,7 @@ try {
         return restY + surfaceRow * cellH;
     }
 
-    //bend the light streaks/ripples
+    //splash-triggered light disturbances
     const WATER_LIGHT_BEND = {
         maxActive: 8,
         travelSpeed: 210,
@@ -603,7 +605,7 @@ try {
         return { bend, glow };
     }
 
-    //backdrop wobbles in sync with the above ripple from the player entering
+    //background ripple field
     const BG_RIPPLE = {
         amp: 3.2,
         radius: 460,
@@ -749,11 +751,10 @@ try {
 
     /* END WATER SYSTEM*/
 
-    /*
+    /* 
        BACKGROUND RENDERING
-       Currently parallax. 
-       Distorts when water is over it etc
     */
+
     let bgFrameBuffer = null;
     let bgFrameBufferCtx = null;
 
@@ -769,7 +770,7 @@ try {
     }
 
     function drawBackgroundArt() {
-        //draw straight to canvas like before
+        //no active disturbances, just draw the backdrop
         if (!waterLightDisturbances.length) {
             ctx.save();
             ctx.fillStyle = "#111827";
@@ -790,7 +791,7 @@ try {
             ctx.restore();
             return;
         }
-    //ripple path
+
         const pad = Math.ceil(BG_RIPPLE.amp) + 2;
         ensureBgFrameBuffer(pad);
 
@@ -827,7 +828,7 @@ try {
         ctx.restore();
     }
 
-    /* END BACKGROUND RENDERING */
+    /*END BACKGROUND RENDERING*/
 
     const MAP = [
         [
@@ -1160,6 +1161,7 @@ try {
 
                 //no vertical damping (reduced)
                 this.v.y *= 0.988;
+                this.v.y = constrain(this.v.y, -WATER_SPRING.maxSwimSpeed, WATER_SPRING.maxSwimSpeed);
                 this.y += this.v.y * dt;
                 this.action = "air";
                 return;
@@ -1439,14 +1441,28 @@ try {
 
         //Calculates a cell's light level by diffusing light from neighbors and applying decay
         getLightLevel(x, y, symbol) {
-            const left = this.data.get(x - 1, y);
-            const right = this.data.get(x + 1, y);
-            const top = this.data.get(x, y - 1);
-            const bottom = this.data.get(x, y + 1);
+            const targetIsSolid = this.isSolid(symbol);
+            const neighborCoords = [
+                [x - 1, y],
+                [x + 1, y],
+                [x, y - 1],
+                [x, y + 1],
+            ];
 
-            const highestNeighbor = Math.max(left, right, top, bottom);
-            //Apply different decay rates depending on whether the light is passing through a solid or air
-            const propagatedLight = Math.max(highestNeighbor * (this.isSolid(symbol) ? this.settings.groundDecay : this.settings.airDecay), this.settings.minLevel);
+            let highestNeighbor = 0;
+            for (const [nx, ny] of neighborCoords) {
+                //light only reaches a cell by traveling through open space
+                if (!targetIsSolid && this.isSolid(levelArray?.get(nx, ny))) {
+                    continue;
+                }
+                const level = this.data.get(nx, ny);
+                if (level !== null && level > highestNeighbor) {
+                    highestNeighbor = level;
+                }
+            }
+
+            //apply different decay rates depending on whether the light is passing through a solid or air
+            const propagatedLight = Math.max(highestNeighbor * (targetIsSolid ? this.settings.groundDecay : this.settings.airDecay), this.settings.minLevel);
 
             const playerCellX = Math.floor(player.x / this.grid.size);
             const playerCellY = Math.floor(player.y / this.grid.size);
