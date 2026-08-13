@@ -43,7 +43,7 @@ try {
 
     //palette
     const waterPalette = {
-        surface: "#eafeff",
+        surface: "#467ed3de",
         body: "#1f52b1",
     };
 
@@ -270,7 +270,7 @@ try {
                 if (topSurface && row < surfaceRowStarts[col]) continue;
 
                 if (topSurface && row === surfaceRowStarts[col]) {
-                    ctx.globalAlpha = 1;
+                    ctx.globalAlpha = 0.55;
                     ctx.fillStyle = waterPalette.surface;
                     ctx.fillRect(px, py, cellW, cellH);
                     continue;
