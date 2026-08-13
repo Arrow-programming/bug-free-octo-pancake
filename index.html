@@ -841,7 +841,7 @@ try {
             "  	   ######",
             "  	   #!!",
             "	   ##     ",
-            "	  ##     #####",
+            "	  ##      ####",
             "	##      @   %##",
             "	#       ######",
             "	#WWWWWW##  !!# #####",
@@ -965,7 +965,7 @@ try {
         
         //The width and height
         w: blockSize - 5,
-        h: blockSize - 5,
+        h: 65,
         
         collide: {
             left: false,
@@ -1190,11 +1190,9 @@ try {
 
         //Merge into one function
         display: function() {
-            if (!playerSprites) {
-                ctx.fillStyle = "rgb(100, 255, 100)";
-                ctx.fillRect(this.x, this.y, this.w, this.h);
-                return;
-            }
+            ctx.fillStyle = "rgb(100, 255, 100)";
+            //ctx.fillRect(this.x, this.y, this.w, this.h);
+            
 
             //pick which animation set to play based on current movement state
             let stateKey;
@@ -1243,10 +1241,8 @@ try {
             const spriteW = frame.w * PIXEL;
             const spriteH = frame.h * PIXEL;
 
-            //feet anchored to the bottom-center of the (smaller) hitbox, snapped to the
-            //in-game pixel grid so the sprite never renders on a fractional screen pixel
-            const rawX = this.x + this.w / 2 - spriteW / 2;
-            const rawY = this.y + this.h - spriteH;
+            const rawX = this.x + this.w / 2 - spriteW / 2 - 3;
+            const rawY = this.y + this.h - spriteH + 10;
             const drawX = Math.round(rawX / PIXEL) * PIXEL;
             const drawY = Math.round(rawY / PIXEL) * PIXEL;
 
