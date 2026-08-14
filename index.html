@@ -28,6 +28,7 @@ try {
     let currentLevel = 0;
     let keys = {};
     let blocks = [];
+    let blockGrid = new Map();
     const blockSize = 45;
     const PIXEL = 5;
     const tileSprite = typeof gfx !== "undefined" && gfx?.tiles?.A?.yyyy ? gfx.tiles.A.yyyy : null;
@@ -1319,8 +1320,7 @@ try {
         }
     }
 
-    //part of the WATER SYSTEM above; kept here (not up there) only because it
-    //must be declared after Block, which it extends
+    //part of the WATER SYSTEM above; kept here (not up there) only because itmust be declared after Block, which it extends
     class WaterBlock extends Block {
         constructor(x, y, w, h) {
             super(x, y, w, h, "water");
@@ -1339,6 +1339,247 @@ try {
         }
     }
 
+    const RAIN = {
+        enabled: true,
+        angleDeg: 20,
+        speed: 820,
+        speedVariance: 0.35,
+        angleJitterDeg: 0,
+        maxDropsPerLayer: 1600,
+        splashColor: "#eaf8ff",
+
+        layers: {
+            back: {
+                enabled: true,
+                collide: false,
+                parallax: 0.55,
+                speedScale: 0.8,
+                density: 40,
+                pixelSize: PIXEL,
+                dropLength: 3,
+                dropLengthVariance: 0.6,
+                alphaScale: 0.7,
+                color: "#3f5c78",
+            },
+            mid: {
+                enabled: true,
+                collide: true,
+                parallax: 1,
+                speedScale: 1,
+                density: 20,
+                pixelSize: PIXEL,
+                dropLength: 4,
+                dropLengthVariance: 0.75,
+                alphaScale: 1,
+                color: "#bcdcff",
+            },
+            front: {
+                enabled: true,
+                collide: false,
+                parallax: 1.45,
+                speedScale: 1.25,
+                density: 7,
+                pixelSize: PIXEL * 2,
+                dropLength: 5,
+                dropLengthVariance: 0.5,
+                alphaScale: 1,
+                color: "#eaf6ff",
+            },
+        },
+    };
+    window.RAIN = RAIN;
+
+    const RAIN_SOLID_TYPES = new Set(["block", "hazard", "portal", "tramp", "mud", "ice"]);
+
+    let rainLayers = {};
+    let rainSplashes = [];
+
+    function initRainLayers() {
+        rainLayers = {};
+        for (const key in RAIN.layers) {
+            rainLayers[key] = { drops: [], spawnAccumulator: 0 };
+        }
+    }
+
+    function blockAt(worldX, worldY) {
+        const col = Math.floor(worldX / blockSize);
+        const row = Math.floor(worldY / blockSize);
+        return blockGrid.get(col + "," + row) || null;
+    }
+
+    class RainSplashParticle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            this.life = 0;
+            this.maxLife = 0.12 + Math.random() * 0.1;
+        }
+        update(dt) {
+            this.life += dt;
+            return this.life < this.maxLife;
+        }
+        draw() {
+            const t = constrain(1 - this.life / this.maxLife, 0, 1);
+            ctx.globalAlpha = t * 0.85;
+            ctx.fillStyle = this.color;
+            const px = Math.round(this.x / PIXEL) * PIXEL;
+            const py = Math.round(this.y / PIXEL) * PIXEL;
+            ctx.fillRect(px, py, PIXEL, PIXEL);
+        }
+    }
+
+    function spawnImpactSplash(x, y) {
+        const count = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < count; i++) {
+            const offsetX = Math.round((Math.random() - 0.5) * 3) * PIXEL;
+            const offsetY = Math.round((Math.random() - 0.5) * 2) * PIXEL;
+            rainSplashes.push(new RainSplashParticle(x + offsetX, y + offsetY, RAIN.splashColor));
+        }
+    }
+
+    class RainDrop {
+        constructor(x, y, layer) {
+            this.x = x;
+            this.y = y;
+            this.alive = true;
+            this.layer = layer;
+
+            const jitter = (Math.random() - 0.5) * 2 * RAIN.angleJitterDeg;
+            const angleRad = (RAIN.angleDeg + jitter) * Math.PI / 180;
+            const spd = RAIN.speed * layer.speedScale * (1 + (Math.random() - 0.5) * 2 * RAIN.speedVariance);
+            this.vx = Math.sin(angleRad) * spd;
+            this.vy = Math.cos(angleRad) * spd;
+            this.alpha = (0.5 + Math.random() * 0.4) * layer.alphaScale;
+            this.len = Math.max(1, Math.round(
+                layer.dropLength * (1 + (Math.random() - 0.5) * 2 * layer.dropLengthVariance)
+            ));
+        }
+
+        update(dt) {
+            const nx = this.x + this.vx * dt;
+            const ny = this.y + this.vy * dt;
+
+            if (this.layer.collide) {
+                if (nx >= player.x && nx <= player.x + player.w && ny >= player.y && ny <= player.y + player.h) {
+                    this.alive = false;
+                    spawnImpactSplash(nx, ny);
+                    return;
+                }
+
+                const hit = blockAt(nx, ny);
+                if (hit) {
+                    if (hit.type === "water") {
+                        const isSurface = hit.isTopSurface && hit.isTopSurface();
+                        const surfaceLine = isSurface ? (waterSurfaceLineAt(nx) ?? hit.y) : hit.y;
+
+                        if (!isSurface || ny >= surfaceLine) {
+                            this.alive = false;
+                            const impact = constrain(Math.abs(this.vy) * 0.12, 6, 42);
+                            splashWaterSurface(nx, impact);
+                            if (Math.random() < 0.45) {
+                                spawnWaterLightDisturbance(nx, constrain(impact * 0.5, 6, 24));
+                            }
+                            spawnImpactSplash(nx, surfaceLine);
+                            return;
+                        }
+                    } else if (RAIN_SOLID_TYPES.has(hit.type)) {
+                        this.alive = false;
+                        spawnImpactSplash(nx, Math.min(ny, hit.y));
+                        return;
+                    }
+                }
+            }
+
+            this.x = nx;
+            this.y = ny;
+
+            if (this.y > lvlSizeY + 900 || this.x < -1200 || this.x > lvlSizeX + 1200) {
+                this.alive = false;
+            }
+        }
+
+        draw() {
+            const dirLen = Math.hypot(this.vx, this.vy) || 1;
+            const ux = this.vx / dirLen;
+            const uy = this.vy / dirLen;
+            const size = this.layer.pixelSize;
+
+            const factor = this.layer.parallax;
+            const baseX = this.x + cam.x * (1 - factor);
+            const baseY = this.y + cam.y * (1 - factor);
+
+            ctx.globalAlpha = this.alpha;
+            ctx.fillStyle = this.layer.color;
+            for (let s = 0; s < this.len; s++) {
+                const px = Math.round((baseX - ux * s * size) / PIXEL) * PIXEL;
+                const py = Math.round((baseY - uy * s * size) / PIXEL) * PIXEL;
+                ctx.fillRect(px, py, size, size);
+            }
+        }
+    }
+
+    function updateRainLayers(dt) {
+        const angleRad = RAIN.angleDeg * Math.PI / 180;
+
+        for (const key in RAIN.layers) {
+            const layer = RAIN.layers[key];
+            const state = rainLayers[key];
+            if (!state) continue;
+
+            if (!RAIN.enabled || !layer.enabled) {
+                state.drops.length = 0;
+                continue;
+            }
+
+            const factor = layer.parallax;
+            const centerX = cam.x * factor;
+            const centerY = cam.y * factor;
+
+            const spawnMarginY = 160;
+            const spawnY = centerY - height / 2 - spawnMarginY;
+            const slant = Math.abs(Math.tan(angleRad)) * (height + spawnMarginY);
+            const spawnLeft = centerX - width / 2 - slant - 80;
+            const spawnRight = centerX + width / 2 + slant + 80;
+            const spawnWidth = spawnRight - spawnLeft;
+
+            state.spawnAccumulator += layer.density * (spawnWidth / 1000) * dt;
+            while (state.spawnAccumulator >= 1 && state.drops.length < RAIN.maxDropsPerLayer) {
+                state.spawnAccumulator -= 1;
+                const x = spawnLeft + Math.random() * spawnWidth;
+                const y = spawnY - Math.random() * 260;
+                state.drops.push(new RainDrop(x, y, layer));
+            }
+        }
+
+        for (const key in rainLayers) {
+            const drops = rainLayers[key].drops;
+            for (let i = drops.length - 1; i >= 0; i--) {
+                drops[i].update(dt);
+                if (!drops[i].alive) drops.splice(i, 1);
+            }
+        }
+        for (let i = rainSplashes.length - 1; i >= 0; i--) {
+            if (!rainSplashes[i].update(dt)) rainSplashes.splice(i, 1);
+        }
+    }
+
+    function drawRainLayer(key) {
+        const state = rainLayers[key];
+        if (!state || state.drops.length === 0) {
+            if (key !== "mid" || rainSplashes.length === 0) return;
+        }
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        if (state) {
+            for (const drop of state.drops) drop.draw();
+        }
+        if (key === "mid") {
+            for (const splash of rainSplashes) splash.draw();
+        }
+        ctx.globalAlpha = 1;
+        ctx.restore();
+    }
 
     /**
      * 
@@ -1621,6 +1862,15 @@ try {
             }
         }
         
+        blockGrid = new Map();
+        for (const block of blocks) {
+            const col = Math.round(block.x / blockSize);
+            const row = Math.round(block.y / blockSize);
+            blockGrid.set(col + "," + row, block);
+        }
+        initRainLayers();
+        rainSplashes = [];
+        
         
         //fetch the width and height of each level in pixels
         lvlSizeX = longestX * blockSize;
@@ -1851,7 +2101,8 @@ try {
         }
 
         cam.update();
-
+        updateRainLayers(dt);
+        drawRainLayer("back");
 
         for (var i = 0; i < blocks.length; i++) {
             if (blocks[i].type !== "water") {
@@ -1860,6 +2111,7 @@ try {
         }
 
         player.display();
+        drawRainLayer("mid");
 
         //Draw water on top of the player so it looks like they are submerged.
         for (var i = 0; i < blocks.length; i++) {
@@ -1871,6 +2123,7 @@ try {
         applyUnderwaterDistortion();
 
         updateAndRenderLighting(lighting);
+        drawRainLayer("front");
 
         if(currentLevel === MAP.length){
             shakes.push(new Shake(100));
