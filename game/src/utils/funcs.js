@@ -1,3 +1,9 @@
+/**
+ * All the helper functions
+ * I guess they don't really need to be in the Funcs object
+ */
+
+
 export const Funcs = {
     constrain: (aNumber, aMin, aMax) => {
         return aNumber > aMax ? aMax : aNumber < aMin ? aMin : aNumber;

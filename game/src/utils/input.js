@@ -1,3 +1,7 @@
+/**
+ * Keyboard, mouse, etc input handlers
+ */
+
 export let keys = {};
 
 /* Key events */
