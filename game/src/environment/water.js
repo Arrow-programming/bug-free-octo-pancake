@@ -3,9 +3,12 @@
  */
 
 
-import { BLOCK_SIZE, PIXEL_SIZE } from '../utils/constants.js'
+import { BLOCK_SIZE, PIXEL_SIZE, WATER_SPRING, WATER_WAVE, WATER_LIGHT_BEND, BG_RIPPLE } from '../utils/constants.js'
 import { Funcs } from '../utils/funcs.js'
-import { player } from '../player/player.js'
+import { graphics } from '../graphics.js'
+
+// Will import from player.js and other fils instead of main eventually
+import { player } from '../main.js'
 
 /*
     WATER SYSTEM
@@ -20,12 +23,8 @@ const waterPalette = {
     body: "#1f52b1",
 };
 
-const WATER_WAVE = {
-    freq: 0.018,   
-    speed: 0.29,   
-    phaseScale: 0, 
-    
-};
+
+
 
 
 //light streaks
@@ -77,7 +76,8 @@ export function createLightStreaks(spanWidth, opts) {
     }
     return streaks;
 }
-
+export let lightStreaksWide = [];
+export let lightStreaksFine = [];
 
 //ambient light ripples
 class LightRipple {
@@ -145,24 +145,24 @@ class LightRipple {
         const distanceDown = Math.max(0, py - this.y);
         const topFade = Math.max(0, 1 - distanceDown / this.penetrationLength);
 
-        ctx.save();
-        ctx.globalAlpha = Math.min(0.95, intensity * 2.8 * topFade * topFade);
-        ctx.fillStyle = this.color;
-        ctx.translate(x + beamW / 2, y + beamH / 2);
-        ctx.rotate(this.angle + Math.sin(time * 0.0007 + this.phase) * this.sway);
-        ctx.fillRect(-beamW / 2, -beamH / 2, beamW, beamH);
-        ctx.restore();
+        graphics.ctx.save();
+        graphics.ctx.globalAlpha = Math.min(0.95, intensity * 2.8 * topFade * topFade);
+        graphics.ctx.fillStyle = this.color;
+        graphics.ctx.translate(x + beamW / 2, y + beamH / 2);
+        graphics.ctx.rotate(this.angle + Math.sin(time * 0.0007 + this.phase) * this.sway);
+        graphics.ctx.fillRect(-beamW / 2, -beamH / 2, beamW, beamH);
+        graphics.ctx.restore();
     }
 }
 
 let rippleSeed = Math.floor(performance.now() * 1000) ^ Math.floor(Math.random() * 0xffffffff);
 
-export function seededRandom() {
+function seededRandom() {
     rippleSeed = (rippleSeed * 1664525 + 1013904223) >>> 0;
     return rippleSeed / 0x100000000;
 }
 
-export function createRandomRipples(count = 12) {
+function createRandomRipples(count = 12) {
     const ripples = [];
     const palette = ["#dff6ff", "#e5f9ff", "#c7f1ff", "#a7deff", "#8edcff"];
 
@@ -217,8 +217,8 @@ export function drawWaterTile(x, y, w, h, topSurface) {
     const t = frameTime / 1000;
     const baseRow = Math.floor(y / cellH);
 
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
+    graphics.ctx.save();
+    graphics.ctx.imageSmoothingEnabled = false;
 
     const surfaceRowStarts = [];
     if (topSurface) {
@@ -241,19 +241,19 @@ export function drawWaterTile(x, y, w, h, topSurface) {
             if (topSurface && row < surfaceRowStarts[col]) continue;
 
             if (topSurface && row === surfaceRowStarts[col]) {
-                ctx.globalAlpha = 0.55;
-                ctx.fillStyle = waterPalette.surface;
-                ctx.fillRect(px, py, cellW, cellH);
+                graphics.ctx.globalAlpha = 0.55;
+                graphics.ctx.fillStyle = waterPalette.surface;
+                graphics.ctx.fillRect(px, py, cellW, cellH);
                 continue;
             }
             const surfaceY = waterSurfaceByColumn[x] ?? y;
             const depth = py - surfaceY;
             const fadeDistance = 300;
             const depthFade = Math.max(0.08, Math.pow(Math.max(0, 1 - depth / fadeDistance), 1.3));
-            ctx.globalAlpha = 0.32 + 0.26 * depthFade;
-            ctx.fillStyle = waterPalette.body;
-            ctx.fillRect(px, py, cellW, cellH);
-            ctx.globalCompositeOperation = "lighter";
+            graphics.ctx.globalAlpha = 0.32 + 0.26 * depthFade;
+            graphics.ctx.fillStyle = waterPalette.body;
+            graphics.ctx.fillRect(px, py, cellW, cellH);
+            graphics.ctx.globalCompositeOperation = "lighter";
             const cellCenterX = px + cellW / 2;
             const cellCenterY = py + cellH / 2;
             const disturbance = waterLightDisturbances.length ? waterLightBendAt(cellCenterX, cellCenterY) : { bend: 0, glow: 0 };
@@ -261,64 +261,32 @@ export function drawWaterTile(x, y, w, h, topSurface) {
 
             const wide = lightStreaksWide.find((s) => s.covers(sampleX, gy, t, depth));
             if (wide) {
-                ctx.globalAlpha = Funcs.constrain((wide.opacity + disturbance.glow * 0.6) * depthFade, 0, 1);
-                ctx.fillStyle = wide.color;
-                ctx.fillRect(px, py, cellW, cellH);
+                graphics.ctx.globalAlpha = Funcs.constrain((wide.opacity + disturbance.glow * 0.6) * depthFade, 0, 1);
+                graphics.ctx.fillStyle = wide.color;
+                graphics.ctx.fillRect(px, py, cellW, cellH);
             }
 
             const fine = lightStreaksFine.find((s) => s.covers(sampleX, gy, t, depth));
             if (fine) {
-                ctx.globalAlpha = Funcs.constrain((fine.opacity + disturbance.glow * 0.4) * depthFade, 0, 1);
-                ctx.fillStyle = fine.color;
-                ctx.fillRect(px, py, cellW, cellH);
+                graphics.ctx.globalAlpha = Funcs.constrain((fine.opacity + disturbance.glow * 0.4) * depthFade, 0, 1);
+                graphics.ctx.fillStyle = fine.color;
+                graphics.ctx.fillRect(px, py, cellW, cellH);
             }
 
-            ctx.globalCompositeOperation = "source-over";
+            graphics.ctx.globalCompositeOperation = "source-over";
 
             for (const ripple of waterRipples) {
-                ripple.drawOverTile(ctx, px, py, cellW, cellH, t);
+                ripple.drawOverTile(graphics.ctx, px, py, cellW, cellH, t);
             }
         }
     }
 
-    ctx.restore();
+    graphics.ctx.restore();
 }
 
-const UNDERWATER_DISTORT = {
-    rowHeight: PIXEL_SIZE,
-    amp: PIXEL_SIZE * 2,
-    freq: WATER_WAVE.freq, 
-    speed: WATER_WAVE.speed,
-};
-let frameBuffer = null;
-let frameBufferCtx = null;
+
 
 //surface spring simulation
-const WATER_SPRING = {
-    spacing: 5,
-    tension: 0.022,
-    damping: 0.05,
-    spread: 0.16,
-    spreadPasses: 8,
-    splashRadius: 6,
-    splashTransfer: 0.16,
-    entryDamping: 0.5,
-    entryMinImpact: 18,     
-    entrySplashScale: 0.5, 
-    pressBand: 90,
-    weightPush: 6,
-    idleAmplitude: 1,
-    idleFreq: WATER_WAVE.freq * 3.4,
-    idleSpeed: WATER_WAVE.speed * 1.7,
-    maxDisplacement: 42,
-    tensionBand: 30,
-    surfaceTension: 270,
-    skimBand: 26,          
-    skimLift: 340,         
-    skimAccelMul: 0.85,    
-    skimSpeedMul: 1.15,    
-    maxSwimSpeed: 480, 
-};
 
 class WaterSurfaceSegment {
     constructor(startX, endX, surfaceY) {
@@ -442,7 +410,7 @@ export function buildWaterSurfaceSegments() {
     }
 }
 
-export function findWaterSegment(worldX) {
+function findWaterSegment(worldX) {
     for (const segment of waterSurfaceSegments) {
         if (segment.containsX(worldX)) {
             return segment;
@@ -464,19 +432,19 @@ export function splashWaterSurface(worldX, velocity) {
     }
 }
 
-export function pressWaterSurface(worldX, targetDepth, strength, dt) {
+function pressWaterSurface(worldX, targetDepth, strength, dt) {
     const segment = findWaterSegment(worldX);
     if (segment) {
         segment.press(worldX, targetDepth, strength, dt);
     }
 }
 
-export function waterIdleWave(worldX, t) {
+function waterIdleWave(worldX, t) {
     return Math.sin(worldX * WATER_SPRING.idleFreq + t * WATER_SPRING.idleSpeed) * WATER_SPRING.idleAmplitude
         + Math.sin(worldX * WATER_SPRING.idleFreq * 2.3 - t * WATER_SPRING.idleSpeed * 0.7) * WATER_SPRING.idleAmplitude * 0.4;
 }
 
-export function waterDisplacementAt(worldX) {
+function waterDisplacementAt(worldX) {
     const segment = findWaterSegment(worldX);
     const spring = segment ? segment.heightAt(worldX) : 0;
     const total = spring + waterIdleWave(worldX, frameTime / 1000);
@@ -496,17 +464,7 @@ export function waterSurfaceLineAt(worldX) {
     return restY + surfaceRow * cellH;
 }
 
-//splash-triggered light disturbances
-const WATER_LIGHT_BEND = {
-    maxActive: 8,
-    travelSpeed: 210,
-    frontWidth: 44,
-    radius: 68,
-    freq: 0.055,
-    oscSpeed: 6.5,
-    decayRate: 0.85,
-    lifespan: 2.4,
-};
+
 
 class WaterLightDisturbance {
     constructor(x, restY, strength) {
@@ -564,7 +522,7 @@ export function updateWaterLightDisturbances(dt) {
     waterLightDisturbances = waterLightDisturbances.filter((disturbance) => !disturbance.isDone());
 }
 
-export function waterLightBendAt(worldX, worldY) {
+function waterLightBendAt(worldX, worldY) {
     let bend = 0;
     let glow = 0;
     for (const disturbance of waterLightDisturbances) {
@@ -575,15 +533,7 @@ export function waterLightBendAt(worldX, worldY) {
     return { bend, glow };
 }
 
-const BG_RIPPLE = {
-    amp: PIXEL_SIZE * 2,
-    radius: 460,
-    travelSpeed: WATER_LIGHT_BEND.travelSpeed * 1.35,
-    frontWidth: WATER_LIGHT_BEND.frontWidth * 2.4,
-    freq: WATER_LIGHT_BEND.freq * 0.6,
-    oscSpeed: WATER_LIGHT_BEND.oscSpeed,
-    decayRate: WATER_LIGHT_BEND.decayRate * 0.7,
-};
+
 
 export function backgroundRippleBendAt(worldX, worldY) {
     if (!waterLightDisturbances.length) {
@@ -637,86 +587,5 @@ export function updatePlayerWaterSpring(dt) {
     player.wasInWater = player.inWater;
 }
 
-//render helpers for the underwater distortion pass
-export function ensureFrameBuffer(pad) {
-    const neededW = width + pad * 2;
-    if (!frameBuffer || frameBuffer.width !== neededW || frameBuffer.height !== height) {
-        frameBuffer = document.createElement("canvas");
-        frameBuffer.width = neededW;
-        frameBuffer.height = height;
-        frameBufferCtx = frameBuffer.getContext("2d");
-        frameBufferCtx.imageSmoothingEnabled = false;
-    }
-}
 
-//build a clip region primarily
-export function applyUnderwaterDistortion() {
-    const waterRects = [];
-    for (const block of blocks) {
-        if (block.type !== "water") continue;
-
-        if (block.isTopSurface && block.isTopSurface()) {
-            const cols = 9;
-            const cellW = block.w / cols;
-            for (let col = 0; col < cols; col++) {
-                const colX = block.x + col * cellW;
-                const surfaceLine = waterSurfaceLineAt(colX + cellW / 2) ?? block.y;
-                const rectY = surfaceLine;
-                const rectH = (block.y + block.h) - surfaceLine;
-                if (rectH <= 0) continue;
-
-                const screenX = colX - cam.x + shake.x + width / 2;
-                const screenY = rectY - cam.y + shake.y + height / 2;
-                if (screenX + cellW < 0 || screenX > width || screenY + rectH < 0 || screenY > height) {
-                    continue;
-                }
-                waterRects.push([screenX, screenY, cellW, rectH]);
-            }
-            continue;
-        }
-
-        const screenX = block.x - cam.x + shake.x + width / 2;
-        const screenY = block.y - cam.y + shake.y + height / 2;
-        //keep the clip path limited
-        if (screenX + block.w < 0 || screenX > width || screenY + block.h < 0 || screenY > height) {
-            continue;
-        }
-        waterRects.push([screenX, screenY, block.w, block.h]);
-    }
-    if (waterRects.length === 0) {
-        return;
-    }
-
-    const pad = Math.ceil(UNDERWATER_DISTORT.amp) + 2;
-    ensureFrameBuffer(pad);
-
-    frameBufferCtx.drawImage(canvas, 0, 0, 1, height, 0, 0, pad, height);
-    frameBufferCtx.drawImage(canvas, 0, 0, width, height, pad, 0, width, height);
-    frameBufferCtx.drawImage(canvas, width - 1, 0, 1, height, pad + width, 0, pad, height);
-    
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.beginPath();
-    for (const [rx, ry, rw, rh] of waterRects) {
-        ctx.rect(rx, ry, rw, rh);
-    }
-    ctx.clip();
-    ctx.imageSmoothingEnabled = false;
-
-    const t = frameTime / 1000;
-    const rowH = UNDERWATER_DISTORT.rowHeight;
-    for (let y = 0; y < height; y += rowH) {
-        const rh = Math.min(rowH, height - y);
-        const wave = Math.sin(y * UNDERWATER_DISTORT.freq + t * UNDERWATER_DISTORT.speed);
-        //quantize the shift to whole in-game pixels (multiples of PIXEL_SIZE) so the warp
-        //looks like the pixel art is stepping, not sliding around at sub-pixel amounts
-        const shift = Math.round((wave * UNDERWATER_DISTORT.amp) / PIXEL_SIZE) * PIXEL_SIZE;
-        ctx.drawImage(
-            frameBuffer,
-            pad - shift, y, width, rh,
-            0, y, width, rh
-        );
-    }
-    ctx.restore();
-}
 

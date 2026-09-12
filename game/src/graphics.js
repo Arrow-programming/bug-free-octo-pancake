@@ -138,7 +138,4 @@ class Rasterizer {
     // }
 }
 
-
-
-
 export const rasterizer = new Rasterizer(3);
