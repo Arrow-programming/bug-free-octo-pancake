@@ -1,5 +1,6 @@
 /**
  * Camera object and shaking code
+ * _Not used right now due to dependencies_
  */
 
 

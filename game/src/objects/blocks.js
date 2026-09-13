@@ -1,13 +1,11 @@
 /**
- * Hold most of the blocks
+ * Holds most of the blocks
  */
 
 import { BLOCK_SIZE } from '../utils/constants.js'
 
 import { graphics } from '../graphics.js'
 import { gfx } from "../../assets/art/pixelart.js";
-
-// Once water is put in water.js, would import from there instead of main
 import { drawWaterTile } from '../environment/water.js'
 import { Fire } from '../environment/fire.js'
 

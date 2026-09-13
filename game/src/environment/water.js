@@ -7,7 +7,7 @@ import { BLOCK_SIZE, PIXEL_SIZE, WATER_SPRING, WATER_WAVE, WATER_LIGHT_BEND, BG_
 import { Funcs } from '../utils/funcs.js'
 import { graphics } from '../graphics.js'
 
-// Will import from player.js and other fils instead of main eventually
+// Will import from player.js instead of main eventually
 import { player } from '../main.js'
 
 /*
