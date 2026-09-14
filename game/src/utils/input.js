@@ -7,10 +7,10 @@ export let keys = {};
 /* Key events */
 var EL = window.addEventListener;
 EL('keydown', (e) => {
-    e.preventDefault();
-    keys[e.which] = true;
+	e.preventDefault();
+	keys[e.which] = true;
 });
 EL('keyup', (e) => {
-    e.preventDefault();
-    keys[e.which] = false;
+	e.preventDefault();
+	keys[e.which] = false;
 });

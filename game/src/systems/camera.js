@@ -1,48 +1,39 @@
-/**
- * Camera object and shaking code
- * _Not used right now due to dependencies_
- */
+import { graphics } from '../graphics.js';
+import { Funcs } from '../utils/funcs.js';
 
+export class Camera {
+	constructor(target, zoom = 1) {
+		this.target = target;
+		this.x = target.x;
+		this.y = target.y;
+		this.z = zoom;
+		this.shakes = [];
+		this.shake = { x: 0, y: 0 };
+	}
 
-//camera shake
-export const shakes = []; 
-export let shake = {
-    x: 0,
-    y: 0,
-};
-export const Shake = (function () {
-    let Shake = function (n) {
-        //shake power
-        this.n = n;
-    };
-    Shake.prototype = {
-        active: function(increment){
-            //apply shake
-            shake.x = (Math.random()*2-1)*this.n;
-            shake.y = (Math.random()*2-1)*this.n;
-            
-            //fade the shake
-            this.n -= 0.5;
-            
-            if (this.n < 0) {
-                shake.x = 0;
-                shake.y = 0;
-                shakes.splice(increment, 1);
-            }
-        }
-    };
-    return Shake;
-})();
+	addShake(power) {
+		this.shakes.push({ power });
+	}
 
-/* Camera object */
-export const cam = {
-    x: player.x,
-    y: player.y,
-    z: 1,
-    update() {
-        this.x = Funcs.lerp(this.x, player.x * this.z, 0.1);
-        this.y = Funcs.lerp(this.y, player.y * this.z, 0.1);
-        graphics.ctx.translate(~~(-this.x + shake.x + graphics.width / 2 ), ~~(-this.y + shake.y + graphics.height / 2));
-        graphics.ctx.scale(this.z, this.z);
-    },
-};
+	update() {
+		for (let i = this.shakes.length - 1; i >= 0; i--) {
+			const current = this.shakes[i];
+			this.shake.x = (Math.random() * 2 - 1) * current.power;
+			this.shake.y = (Math.random() * 2 - 1) * current.power;
+			current.power -= 0.5;
+			if (current.power < 0) {
+				this.shakes.splice(i, 1);
+			}
+		}
+		if (!this.shakes.length) {
+			this.shake = { x: 0, y: 0 };
+		}
+		this.x = Funcs.lerp(this.x, this.target.x * this.z, 0.1);
+		this.y = Funcs.lerp(this.y, this.target.y * this.z, 0.1);
+		graphics.ctx.translate(
+			~~(-this.x + this.shake.x + graphics.width / 2),
+			~~(-this.y + this.shake.y + graphics.height / 2)
+		);
+		graphics.ctx.scale(this.z, this.z);
+	}
+}
