@@ -8149,8 +8149,8 @@
       gfxData.tiles[key] = generateAutoTileset(interior);
     }
 
-    const spritesheet = new Spritesheet(1024, 1024);
-    const gfx = spritesheet.store(palette, gfxData);
+    export const spritesheet = new Spritesheet(1024, 1024);
+    export const gfx = spritesheet.store(palette, gfxData);
 
     gfx.player.groundpoundimpact = {
       0: gfx.player.groundpound[1],
