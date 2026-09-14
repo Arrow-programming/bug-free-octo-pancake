@@ -1,5 +1,5 @@
 /**
- * Overarching Graphics classes for storing the canvas for use across files
+ * Overarching graphics classes 
  */
 
 class Graphics {
@@ -139,3 +139,10 @@ class Rasterizer {
 }
 
 export const rasterizer = new Rasterizer(3);
+
+// In charge of all rendering
+class Renderer {
+    constructor(game) {
+
+    }
+}
