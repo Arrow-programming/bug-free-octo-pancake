@@ -1,6 +1,6 @@
 import { BLOCK_SIZE, PIXEL_SIZE, WATER_SPRING } from '../utils/constants.js';
 import { Funcs } from '../utils/funcs.js';
-import { keys } from '../utils/input.js';
+import { input } from '../utils/input.js';
 import { gfx } from '../../assets/art/pixelart.js';
 import { graphics } from '../graphics.js';
 
@@ -67,8 +67,8 @@ export class Player {
 	}
 
 	moveX(dt) {
-		this.inputs.left = keys[37] || keys[65];
-		this.inputs.right = keys[39] || keys[68];
+		this.inputs.left = input.press('Left');
+		this.inputs.right = input.press('Right');
 		if (this.inWater) {
 			const surface = this.water.waterSurfaceLineAt(this.x + this.w / 2);
 			const depth = surface === null ? 999 : surface - this.y;
@@ -102,8 +102,8 @@ export class Player {
 	}
 
 	moveY(dt) {
-		this.inputs.up = keys[38] || keys[87];
-		this.inputs.down = keys[40] || keys[83];
+		this.inputs.up = input.press('Up');
+		this.inputs.down = input.press('Down');
 		if (this.inWater) {
 			const surface = this.water.waterSurfaceLineAt(this.x + this.w / 2);
 			const depth = surface === null ? 999 : surface - this.y;

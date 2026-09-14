@@ -8,6 +8,7 @@ import { Rain } from './environment/rain.js';
 import { setWaterContext, setWaterFrameTime } from './environment/water.js';
 import { Funcs } from './utils/funcs.js';
 import { texStr } from '../assets/noise.js';
+import { input, mouse } from './utils/input.js';
 
 export class Game {
 	constructor(canvasId = 'game') {
@@ -127,6 +128,9 @@ export class Game {
 			}
 		}
 		this.rain.update(dt);
+
+		input.update();
+		mouse.update();
 	}
 
 	draw(dt) {
