@@ -145,6 +145,9 @@ export class Game {
 		ctx.setTransform(1, 0, 0, 1, 0, 0);
 		ctx.fillStyle = '#111827';
 		ctx.fillRect(0, 0, graphics.width, graphics.height);
+
+		
+		graphics.pixCtx.clearRect(0, 0, graphics.pixCanvas.width, graphics.pixCanvas.height);
 		const backdrop = gfx?.props?.backdrops?.dungeon;
 		if (backdrop) {
 			const size = 5;
@@ -180,6 +183,7 @@ export class Game {
 				block.draw();
 			}
 		}
+		graphics.render()
 		ctx.restore();
 	}
 

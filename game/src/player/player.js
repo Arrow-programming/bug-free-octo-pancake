@@ -3,12 +3,14 @@ import { Funcs } from '../utils/funcs.js';
 import { input } from '../utils/input.js';
 import { gfx } from '../../assets/art/pixelart.js';
 import { graphics } from '../graphics.js';
+import { Animator } from '../sprites.js';
 
 export class Player {
 	constructor({ water, onPortal, onImpact } = {}) {
 		this.water = water;
 		this.onPortal = onPortal ?? (() => {});
 		this.onImpact = onImpact ?? (() => {});
+		this.animator = new Animator('player')
 		this.reset();
 	}
 
@@ -135,33 +137,53 @@ export class Player {
 		}
 	}
 
+	// draw(dt) {
+		
+	// 	const sprites = gfx?.player;
+	// 	const state = this.inWater ? 'fall' : !this.collide.top ? (this.v.y < 0 ? 'jump' : 'fall') : Math.abs(this.v.x) > 8 ? 'run' : 'idle';
+	// 	const set = sprites?.[state] || sprites?.idle;
+	// 	if (!set?.length) {
+	// 		graphics.ctx.fillStyle = 'rgb(100, 255, 100)';
+	// 		graphics.ctx.fillRect(this.x, this.y, this.w, this.h);
+	// 		return;
+	// 	}
+	// 	if (state !== this.animState) {
+	// 		this.animState = state;
+	// 		this.animFrame = 0;
+	// 		this.animTimer = 0;
+	// 	}
+	// 	const duration = state === 'run' ? Funcs.constrain(0.16 - Math.abs(this.v.x) / this.speed * 0.1, 0.045, 0.16) : 0.12;
+	// 	this.animTimer += dt;
+	// 	while (this.animTimer >= duration && set.length > 1) {
+	// 		this.animTimer -= duration;
+	// 		this.animFrame = (this.animFrame + 1) % set.length;
+	// 	}
+	// 	if (this.v.x > 8) {
+	// 		this.dir = 1;
+	// 	} else if (this.v.x < -8) {
+	// 		this.dir = -1;
+	// 	}
+	// 	const frame = set[Math.min(this.animFrame, set.length - 1)];
+	// 	const w = frame.w * PIXEL_SIZE, h = frame.h * PIXEL_SIZE;
+	// 	graphics.ctx.push()
+	// 	graphics.ctx.scale(this.dir, 1);
+	// 	this.animator.run('lettuce', this.x, this.y, dt, 'replay');
+	// 	graphics.ctx.pop();
+	// 	frame.draw(graphics.ctx, Math.round((this.x + this.w / 2 - w / 2 - 3) / PIXEL_SIZE) * PIXEL_SIZE, Math.round((this.y + this.h - h + 10) / PIXEL_SIZE) * PIXEL_SIZE, PIXEL_SIZE, this.dir);
+	// }
+
 	draw(dt) {
-		const sprites = gfx?.player;
-		const state = this.inWater ? 'fall' : !this.collide.top ? (this.v.y < 0 ? 'jump' : 'fall') : Math.abs(this.v.x) > 8 ? 'run' : 'idle';
-		const set = sprites?.[state] || sprites?.idle;
-		if (!set?.length) {
-			graphics.ctx.fillStyle = 'rgb(100, 255, 100)';
-			graphics.ctx.fillRect(this.x, this.y, this.w, this.h);
-			return;
-		}
-		if (state !== this.animState) {
-			this.animState = state;
-			this.animFrame = 0;
-			this.animTimer = 0;
-		}
-		const duration = state === 'run' ? Funcs.constrain(0.16 - Math.abs(this.v.x) / this.speed * 0.1, 0.045, 0.16) : 0.12;
-		this.animTimer += dt;
-		while (this.animTimer >= duration && set.length > 1) {
-			this.animTimer -= duration;
-			this.animFrame = (this.animFrame + 1) % set.length;
-		}
 		if (this.v.x > 8) {
-			this.dir = 1;
-		} else if (this.v.x < -8) {
-			this.dir = -1;
-		}
-		const frame = set[Math.min(this.animFrame, set.length - 1)];
-		const w = frame.w * PIXEL_SIZE, h = frame.h * PIXEL_SIZE;
-		frame.draw(graphics.ctx, Math.round((this.x + this.w / 2 - w / 2 - 3) / PIXEL_SIZE) * PIXEL_SIZE, Math.round((this.y + this.h - h + 10) / PIXEL_SIZE) * PIXEL_SIZE, PIXEL_SIZE, this.dir);
+            this.dir = 1;
+        } else if (this.v.x < -8) {
+            this.dir = -1;
+        }
+
+		graphics.ctx.save();
+        graphics.ctx.scale(this.dir, 1);
+
+        this.animator.run('player', this.x - this.w / 2 - 10, this.y - this.h / 2, dt, 'replay');
+
+        graphics.ctx.restore();
 	}
 }

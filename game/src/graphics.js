@@ -2,6 +2,8 @@
  * Overarching graphics classes 
  */
 
+import { PIXEL_SIZE } from './utils/constants.js';
+
 class Graphics {
 	constructor() {
 		this.canvas = null;
@@ -16,7 +18,36 @@ class Graphics {
 		this.width = this.canvas.width;
 		this.height = this.canvas.height;
 
+		this.res = Math.floor(Math.max(this.width, this.height) / PIXEL_SIZE);
+
+		const aspect = this.width / this.height;
+
+		this.pixCanvas = new OffscreenCanvas(Math.floor(this.res), Math.floor(this.res / aspect));
+        this.pixCtx = this.pixCanvas.getContext('2d');
+
+		this.ctx.imageSmoothingEnabled = false;
+    	this.pixCtx.imageSmoothingEnabled = false;
+
 	}
+
+	render() {
+		this.ctx.imageSmoothingEnabled = false;
+
+		const scale = Math.min(this.canvas.width / this.pixCanvas.width, this.canvas.height / this.pixCanvas.height);
+
+		const width = this.pixCanvas.width * scale;
+		const height = this.pixCanvas.height * scale;
+
+		const x = (this.canvas.width - width) / 2;
+		const y = (this.canvas.height - height) / 2;
+
+		
+
+		this.ctx.drawImage(this.pixCanvas, 0, 0, this.pixCanvas.width, this.pixCanvas.height, x, y, width, height);
+
+		
+	}
+
 }
 
 export const graphics = new Graphics();
