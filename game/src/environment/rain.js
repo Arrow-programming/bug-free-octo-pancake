@@ -12,11 +12,11 @@ const SOLID_TYPES = new Set([
 	'ice',
 ]);
 
-const INTENSITY_PRESETS = {
+const INTENSITY_PRESETS = Object.freeze({
 	low: { densityScale: 0.35, maxDrops: 800 },
 	medium: { densityScale: 1, maxDrops: 1600 },
 	high: { densityScale: 2, maxDrops: 2400 },
-};
+});
 
 export class Rain {
 	constructor({ player, levels, camera, intensity = 'medium' }) {
@@ -56,7 +56,7 @@ export class Rain {
 					parallax: 1.45,
 					speedScale: 1.25,
 					baseDensity: 4,
-					pixelSize: PIXEL_SIZE * 1.1,
+					pixelSize: PIXEL_SIZE * 1.2,
 					dropLength: 10,
 					alphaScale: 1,
 					color: '#eaf6ff',
