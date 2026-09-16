@@ -1,7 +1,7 @@
 import { gfx } from '../assets/art/pixelart.js';
 import { graphics } from './graphics.js';
 import * as Water from './environment/water.js';
-import { LevelHandler } from './levels.js';
+import { LEVEL_RAIN_INTENSITIES, LevelHandler } from './levels.js';
 import { Player } from './player/player.js';
 import { Camera } from './systems/camera.js';
 import { Rain } from './environment/rain.js';
@@ -26,8 +26,15 @@ export class Game {
 		});
 		setWaterContext(this.player);
 		this.camera = new Camera(this.player);
-		this.levels = new LevelHandler({ player: this.player, camera: this.camera, onResetRain: () => this.rain?.reset() });
-		this.rain = new Rain({ player: this.player, levels: this.levels, camera: this.camera });
+		this.levels = new LevelHandler({
+			player: this.player,
+			camera: this.camera,
+			onResetRain: level => {
+				this.rain?.setIntensity(LEVEL_RAIN_INTENSITIES[level]);
+				this.rain?.reset();
+			},
+		});
+		this.rain = new Rain({ player: this.player, levels: this.levels, camera: this.camera, intensity: 'medium' });
 		this.fireTexture = null;
 		this.running = false;
 	}

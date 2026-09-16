@@ -4,6 +4,9 @@ import { Block, WaterBlock, FireBlock } from './objects/blocks.js';
 import { Lighting } from './environment/lighting.js';
 import * as Water from './environment/water.js';
 
+// Change an entry to 'low', 'medium', or 'high' to tune that level's rain.
+export const LEVEL_RAIN_INTENSITIES = ['medium', 'medium', 'medium', 'medium', 'medium', 'medium', 'medium'];
+
 export const LEVELS = [
 	[
 		'       ',
@@ -205,7 +208,7 @@ export class LevelHandler {
 				playerLightStrength: 0.95,
 			},
 		);
-		this.onResetRain();
+		this.onResetRain(this.current);
 	}
 
 	blockAt(x, y) {
