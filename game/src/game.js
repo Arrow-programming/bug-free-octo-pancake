@@ -93,9 +93,6 @@ export class Game {
 
 	update(dt) {
 		const { player, levels } = this;
-		if (player.y > levels.height + 40 || player.x > levels.width + 40 || player.y < -200 || player.x < -40) {
-			player.health--;
-		}
 		if (this.nextLevel) {
 			levels.setup(this.level);
 			this.level++;

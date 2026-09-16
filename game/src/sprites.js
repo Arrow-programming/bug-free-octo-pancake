@@ -64,7 +64,7 @@ export class Animator {
         }
     }
     
-    run(sprite, x, y, dt, runType) {
+    run(sprite, x, y, dt, runType, flip = 1) {
         const animation = spritesheet.animations[sprite];
         const frames = animation.frames;
 
@@ -73,18 +73,33 @@ export class Animator {
         this.currFrame = typeof runType === 'function' ? runType() : this.runTypes[runType](frames);
 
         const frame = frames[this.currFrame];
-        
-        graphics.pixCtx.drawImage(
+        const drawX = Math.round(x);
+        const drawY = Math.round(y);
+        const drawWidth = frame.w * PIXEL_SIZE;
+        const drawHeight = frame.h * PIXEL_SIZE;
+        const context = graphics.ctx;
+
+        if (flip === -1) {
+            context.save();
+            context.translate(drawX + drawWidth, 0);
+            context.scale(-1, 1);
+        }
+
+        context.drawImage(
             spritesheet.image,
             frame.x,
             frame.y,
             frame.w,
             frame.h,
-            x / PIXEL_SIZE,
-            y / PIXEL_SIZE,
-            frame.w,
-            frame.h
+            flip === -1 ? 0 : drawX,
+            drawY,
+            drawWidth,
+            drawHeight
         );
+
+        if (flip === -1) {
+            context.restore();
+        }
     }
 }
 

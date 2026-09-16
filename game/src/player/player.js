@@ -137,6 +137,7 @@ export class Player {
 		}
 	}
 
+	
 	// draw(dt) {
 		
 	// 	const sprites = gfx?.player;
@@ -179,11 +180,6 @@ export class Player {
             this.dir = -1;
         }
 
-		graphics.ctx.save();
-        graphics.ctx.scale(this.dir, 1);
-
-        this.animator.run('player', this.x - this.w / 2 - 10, this.y - this.h / 2, dt, 'replay');
-
-        graphics.ctx.restore();
+		this.animator.run('player', this.x - this.w / 2 - 10, this.y - this.h / 2, dt, 'replay', this.dir);
 	}
 }

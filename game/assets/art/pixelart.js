@@ -7928,12 +7928,14 @@
 
 	  //trying to fix the lines
 	  draw(ctx, x, y, pixel, flip = 1) {
-		ctx.save();
-		ctx.imageSmoothingEnabled = false;
+		const drawX = Math.floor(x);
+		const drawY = Math.floor(y);
+		const drawW = Math.ceil(this.w * pixel);
+		const drawH = Math.ceil(this.h * pixel);
 		if (flip === -1) {
-		  ctx.translate(Math.floor(x + this.w * pixel), 0);
+		  ctx.save();
+		  ctx.translate(drawX + drawW, 0);
 		  ctx.scale(-1, 1);
-		  x = 0;
 		}
 		ctx.drawImage(
 		  this.spritesheet,
@@ -7941,12 +7943,14 @@
 		  this.y,
 		  this.w,
 		  this.h,
-		  Math.floor(x),
-		  Math.floor(y),
-		  Math.ceil(this.w * pixel),
-		  Math.ceil(this.h * pixel),
+		  flip === -1 ? 0 : drawX,
+		  drawY,
+		  drawW,
+		  drawH,
 		);
-		ctx.restore();
+		if (flip === -1) {
+		  ctx.restore();
+		}
 	  }
 	}
 
