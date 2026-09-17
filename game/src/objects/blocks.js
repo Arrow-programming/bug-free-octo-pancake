@@ -13,12 +13,13 @@ const tileSprite = typeof gfx !== "undefined" && gfx?.tiles?.A?.yyyy ? gfx.tiles
 
 /* Block */
 export class Block {
-	constructor(x, y, w, h, type) {
+	constructor({x, y, w = BLOCK_SIZE, h = BLOCK_SIZE, type, isSolid = true} = {}) {
 		this.x = x;
 		this.y = y;
 		this.w = w;
 		this.h = h;
 		this.type = type;
+		this.isSolid = isSolid;
 	}
 	draw() {
 		switch (this.type) {
@@ -29,6 +30,7 @@ export class Block {
 					graphics.ctx.fillStyle = "rgb(66, 66, 59)";
 					graphics.ctx.fillRect(this.x, this.y, this.w, this.h);
 				}
+				
 				break;
 			case "portal":
 				graphics.ctx.fillStyle = "rgb(200, 100, 200)";
@@ -79,8 +81,8 @@ export class Block {
 }
 
 export class WaterBlock extends Block {
-	constructor(x, y, w, h) {
-		super(x, y, w, h, "water");
+	constructor({x, y} = {}) {
+		super({x:x, y:y, type:"water"});
 	}
 
 	isTopSurface(blocks) {
@@ -97,8 +99,8 @@ export class WaterBlock extends Block {
 }
 
 export class FireBlock extends Block {
-	constructor(x, y, w, h) {
-		super(x, y, w, h, "fire");
+	constructor({x, y, w=BLOCK_SIZE, h = BLOCK_SIZE} = {}) {
+		super({x:x, y:y, w:w, h:h, type:"fire"});
 		const riseHeight = h * 4;
 		this.fire = new Fire(x, y - (riseHeight - h), w, riseHeight);
 	}

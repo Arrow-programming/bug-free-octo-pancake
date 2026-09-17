@@ -99,6 +99,15 @@ export class LevelHandler {
 		this.lighting = null;
 	}
 
+	blockTypes = {
+		"#":"block",
+		"!":"hazard",
+		"%":"portal",
+		"$":"tramp",
+		"_":"mud",
+		"&":"ice",
+	}
+
 	setup(index) {
 		const map = LEVELS[index] ?? LEVELS[0];
 		this.current = index;
@@ -110,37 +119,23 @@ export class LevelHandler {
 			for (let col = 0; col < line.length; col++) {
 				const symbol = line[col];
 				const x = col * BLOCK_SIZE, y = row * BLOCK_SIZE;
-				if (symbol === '#') {
-					this.blocks.push(new Block(x, y, BLOCK_SIZE, BLOCK_SIZE, 'block'));
-				}
-				if (symbol === '!') {
-					this.blocks.push(new Block(x, y, BLOCK_SIZE, BLOCK_SIZE, 'hazard'));
-				}
-				if (symbol === '%') {
-					this.blocks.push(new Block(x, y, BLOCK_SIZE, BLOCK_SIZE, 'portal'));
-				}
-				if (symbol === '$') {
-					this.blocks.push(new Block(x, y, BLOCK_SIZE, BLOCK_SIZE, 'tramp'));
-				}
-				if (symbol === '_') {
-					this.blocks.push(new Block(x, y, BLOCK_SIZE, BLOCK_SIZE, 'mud'));
-				}
-				if (symbol === '&') {
-					this.blocks.push(new Block(x, y, BLOCK_SIZE, BLOCK_SIZE, 'ice'));
-				}
+				
 				if (symbol === 'W') {
-					this.blocks.push(new WaterBlock(x, y, BLOCK_SIZE, BLOCK_SIZE));
+					this.blocks.push(new WaterBlock({x:x, y:y}));
 				}
-				if (symbol === 'F') {
+				else if (symbol === 'F') {
 					let end = col;
 					while (line[end + 1] === 'F') {
 						end++;
 					}
-					this.blocks.push(new FireBlock(x, y, BLOCK_SIZE * (end - col + 1), BLOCK_SIZE));
+					this.blocks.push(new FireBlock({x:x, y:y, w:BLOCK_SIZE * (end - col + 1), h:BLOCK_SIZE}));
 					col = end;
 				}
-				if (symbol === '@') {
+				else if (symbol === '@') {
 					this.player.reset(x, y);
+				}
+				else if(symbol !== " "){
+					this.blocks.push(new Block({x:x, y:y, type:this.blockTypes[symbol]}));
 				}
 			}
 		}
