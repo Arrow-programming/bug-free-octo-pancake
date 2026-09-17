@@ -136,7 +136,7 @@ export class Fire{
 				this.data[i] = Fire.cachedRadiance[~~temp*3];
 				this.data[i+1] = Fire.cachedRadiance[~~temp*3+1];
 				this.data[i+2] = Fire.cachedRadiance[~~temp*3+2];
-				this.data[i+3] = attenuator*Math.pow(150*func(tex.data[texIdx]/255)+127,1.5);
+				this.data[i+3] = 0.5*attenuator*Math.pow(150*func(tex.data[texIdx]/255)+127,1.5);
 			}
 		}
 	}
