@@ -121,14 +121,20 @@ export class LevelHandler {
 				const x = col * BLOCK_SIZE, y = row * BLOCK_SIZE;
 				
 				if (symbol === 'W') {
-					this.blocks.push(new WaterBlock({x:x, y:y}));
+					this.blocks.push(new WaterBlock({x:x, y:y, isSolid:false}));
 				}
 				else if (symbol === 'F') {
 					let end = col;
 					while (line[end + 1] === 'F') {
 						end++;
 					}
-					this.blocks.push(new FireBlock({x:x, y:y, w:BLOCK_SIZE * (end - col + 1), h:BLOCK_SIZE}));
+					this.blocks.push(new FireBlock({
+						x:x,
+						y:y, 
+						w:BLOCK_SIZE * (end - col + 1), 
+						h:BLOCK_SIZE, 
+						isSolid:false
+					}));
 					col = end;
 				}
 				else if (symbol === '@') {
