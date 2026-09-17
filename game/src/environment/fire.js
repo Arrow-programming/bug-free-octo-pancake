@@ -130,13 +130,13 @@ export class Fire {
 				let texX = ((Math.floor(texPos.x) % 600) + 600) % 600;
 				let texY = ((Math.floor(texPos.y) % 600) + 600) % 600;
 				let texIdx = 4 * (600 * texY + texX);
-				let temp = 300 + tex.data[texIdx] * 2;
-				let attenuator = (y / this.ph) * (y / this.ph) * (y / this.ph) * edgeAttenuator;
-
-				this.data[i] = Fire.cachedRadiance[~~temp * 3];
-				this.data[i + 1] = Fire.cachedRadiance[~~temp * 3 + 1];
-				this.data[i + 2] = Fire.cachedRadiance[~~temp * 3 + 2];
-				this.data[i + 3] = attenuator * Math.pow(150 * func(tex.data[texIdx] / 255) + 127, 1.5);
+				let temp = 300+tex.data[texIdx]*2;
+				let attenuator = (y/this.ph)*(y/this.ph)*(y/this.ph)*edgeAttenuator;
+				
+				this.data[i] = Fire.cachedRadiance[~~temp*3];
+				this.data[i+1] = Fire.cachedRadiance[~~temp*3+1];
+				this.data[i+2] = Fire.cachedRadiance[~~temp*3+2];
+				this.data[i+3] = 0.5*attenuator*Math.pow(150*func(tex.data[texIdx]/255)+127,1.5);
 			}
 		}
 	}
