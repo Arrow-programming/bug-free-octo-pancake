@@ -6,7 +6,7 @@ import { graphics } from '../graphics.js';
 import { Hitbox, HitboxSide } from '../utils/hitbox.js';
 
 const timeSort = (first, last) => first.minimumTime - last.minimumTime;
-const blockFilter = el => true; //el.type->plattype == pobj::PlatType::block;
+const blockFilter = el => el.isSolid; //el.type->plattype == pobj::PlatType::block;
 import { Animator } from '../sprites.js';
 
 export class Player {
@@ -108,7 +108,7 @@ export class Player {
 					continue;
 				}*/
 
-				if (!isSolid) continue;
+				if (!blk.isSolid) continue;
 				
 				const scdo = { 
 					minimumTime: 0,
@@ -197,7 +197,7 @@ export class Player {
 			
 			// friction
 			const slipvel = slipn == 0 ? 0 : slipvelsum / slipn;
-			const slip = slipn == 0 ? pastSlip : slipprod ** (1.0 / slipn);
+			const slip = slipn == 0 ? this.pastSlip : slipprod ** (1.0 / slipn);
 			this.pastSlip = slip;
 
 			outFrictionObject.slip = slip;
@@ -249,7 +249,7 @@ export class Player {
 			const surface = this.water.waterSurfaceLineAt(this.x + Player.w / 2);
 			const depth = surface === null ? 999 : surface - this.y;
 			if (this.inputs.up) {
-				this.yv -= this.jumpPow * 0.55 * dt * 1000;
+				this.yv -= this.jumpPow * 0.55 * dt;
 			} else if (this.inputs.down) {
 				this.yv += this.jumpPow * 0.6 * dt;
 			} else {
