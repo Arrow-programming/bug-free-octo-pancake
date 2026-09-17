@@ -1,7 +1,7 @@
 import { gfx } from '../assets/art/pixelart.js';
 import { graphics } from './graphics.js';
 import * as Water from './environment/water.js';
-import { LevelHandler } from './levels.js';
+import { LEVEL_RAIN_INTENSITIES, LevelHandler } from './levels.js';
 import { Player } from './player/player.js';
 import { Camera } from './systems/camera.js';
 import { Rain } from './environment/rain.js';
@@ -27,8 +27,15 @@ export class Game {
 		});
 		setWaterContext(this.player);
 		this.camera = new Camera(this.player);
-		this.levels = new LevelHandler({ player: this.player, camera: this.camera, onResetRain: () => this.rain?.reset() });
-		this.rain = new Rain({ player: this.player, levels: this.levels, camera: this.camera });
+		this.levels = new LevelHandler({
+			player: this.player,
+			camera: this.camera,
+			onResetRain: level => {
+				this.rain?.setIntensity(LEVEL_RAIN_INTENSITIES[level]);
+				this.rain?.reset();
+			},
+		});
+		this.rain = new Rain({ player: this.player, levels: this.levels, camera: this.camera, intensity: 'medium' });
 		this.fireTexture = null;
 		this.running = false;
 	}
@@ -87,9 +94,6 @@ export class Game {
 
 	update(dt) {
 		const { player, levels } = this;
-		if (player.y > levels.height + 40 || player.x > levels.width + 40 || player.y < -200 || player.x < -40) {
-			player.health--;
-		}
 		if (this.nextLevel) {
 			levels.setup(this.level);
 			this.level++;
@@ -130,6 +134,9 @@ export class Game {
 		ctx.setTransform(1, 0, 0, 1, 0, 0);
 		ctx.fillStyle = '#111827';
 		ctx.fillRect(0, 0, graphics.width, graphics.height);
+
+		
+		graphics.pixCtx.clearRect(0, 0, graphics.pixCanvas.width, graphics.pixCanvas.height);
 		const backdrop = gfx?.props?.backdrops?.dungeon;
 		if (backdrop) {
 			const size = 5;
@@ -165,6 +172,7 @@ export class Game {
 				block.draw();
 			}
 		}
+		graphics.render()
 		ctx.restore();
 	}
 

@@ -13,8 +13,14 @@ const SOLID_TYPES = new Set([
 	'ice',
 ]);
 
+const INTENSITY_PRESETS = Object.freeze({
+	low: { densityScale: 0.35, maxDrops: 800 },
+	medium: { densityScale: 1, maxDrops: 1600 },
+	high: { densityScale: 2, maxDrops: 2400 },
+});
+
 export class Rain {
-	constructor({ player, levels, camera }) {
+	constructor({ player, levels, camera, intensity = 'medium' }) {
 		this.player = player;
 		this.levels = levels;
 		this.camera = camera;
@@ -30,7 +36,7 @@ export class Rain {
 					collide: false,
 					parallax: 0.55,
 					speedScale: 0.8,
-					density: 40,
+					baseDensity: 40,
 					pixelSize: PIXEL_SIZE,
 					dropLength: 6,
 					alphaScale: 0.7,
@@ -40,7 +46,7 @@ export class Rain {
 					collide: true,
 					parallax: 1,
 					speedScale: 1,
-					density: 20,
+					baseDensity: 20,
 					pixelSize: PIXEL_SIZE,
 					dropLength: 8,
 					alphaScale: 1,
@@ -50,25 +56,32 @@ export class Rain {
 					collide: false,
 					parallax: 1.45,
 					speedScale: 1.25,
-					density: 7,
-					pixelSize: PIXEL_SIZE * 2,
+					baseDensity: 4,
+					pixelSize: PIXEL_SIZE * 1.2,
 					dropLength: 10,
 					alphaScale: 1,
 					color: '#eaf6ff',
 				},
 			},
 		};
+		this.setIntensity(intensity);
 		this.reset();
 		window.RAIN = this.config;
+	}
+
+	setIntensity(intensity = 'medium') {
+		const preset = INTENSITY_PRESETS[intensity] ?? INTENSITY_PRESETS.medium;
+		this.config.intensity = INTENSITY_PRESETS[intensity] ? intensity : 'medium';
+		this.config.maxDropsPerLayer = preset.maxDrops;
+		for (const layer of Object.values(this.config.layers)) {
+			layer.density = layer.baseDensity * preset.densityScale;
+		}
 	}
 
 	reset() {
 		this.layers = {};
 		for (const key of Object.keys(this.config.layers)) {
-			this.layers[key] = {
-				drops: [],
-				spawnAccumulator: 0,
-			};
+			this.layers[key] = { drops: [], spawnAccumulator: 0 };
 		}
 		this.splashes = [];
 	}
@@ -102,26 +115,18 @@ export class Rain {
 			state.spawnAccumulator += layer.density * width / 1000 * dt;
 			while (state.spawnAccumulator >= 1 && state.drops.length < this.config.maxDropsPerLayer) {
 				state.spawnAccumulator--;
-				state.drops.push(this.drop(
-					left + Math.random() * width,
-					spawnY - Math.random() * 260,
-					layer,
-				));
+				state.drops.push(this.drop(left + Math.random() * width, spawnY - Math.random() * 260, layer));
 			}
 		}
 		for (const state of Object.values(this.layers)) {
 			for (let i = state.drops.length - 1; i >= 0; i--) {
 				state.drops[i].update(dt);
-				if (!state.drops[i].alive) {
-					state.drops.splice(i, 1);
-				}
+				if (!state.drops[i].alive) state.drops.splice(i, 1);
 			}
 		}
 		for (let i = this.splashes.length - 1; i >= 0; i--) {
 			this.splashes[i].life += dt;
-			if (this.splashes[i].life >= this.splashes[i].maxLife) {
-				this.splashes.splice(i, 1);
-			}
+			if (this.splashes[i].life >= this.splashes[i].maxLife) this.splashes.splice(i, 1);
 		}
 	}
 
@@ -129,9 +134,7 @@ export class Rain {
 		const rain = this;
 		const angle = this.config.angleDeg * Math.PI / 180;
 		return {
-			x,
-			y,
-			alive: true,
+			x, y, alive: true,
 			vx: Math.sin(angle) * this.config.speed * layer.speedScale,
 			vy: Math.cos(angle) * this.config.speed * layer.speedScale,
 			layer,
@@ -148,18 +151,14 @@ export class Rain {
 					const block = rain.levels.blockAt(nx, ny);
 					if (block && (block.type === 'water' || SOLID_TYPES.has(block.type))) {
 						this.alive = false;
-						if (block.type === 'water') {
-							Water.splashWaterSurface(nx, 12);
-						}
+						if (block.type === 'water') Water.splashWaterSurface(nx, 12);
 						rain.spawnSplash(nx, Math.min(ny, block.y));
 						return;
 					}
 				}
 				this.x = nx;
 				this.y = ny;
-				if (this.y > rain.levels.height + 900 || this.x < -1200 || this.x > rain.levels.width + 1200) {
-					this.alive = false;
-				}
+				if (this.y > rain.levels.height + 900 || this.x < -1200 || this.x > rain.levels.width + 1200) this.alive = false;
 			},
 			draw() {
 				const length = this.layer.dropLength ?? 4;
@@ -178,14 +177,10 @@ export class Rain {
 
 	drawLayer(key) {
 		const state = this.layers[key];
-		if (!state) {
-			return;
-		}
+		if (!state) return;
 		graphics.ctx.save();
 		graphics.ctx.imageSmoothingEnabled = false;
-		for (const drop of state.drops) {
-			drop.draw();
-		}
+		for (const drop of state.drops) drop.draw();
 		if (key === 'mid') {
 			for (const splash of this.splashes) {
 				graphics.ctx.globalAlpha = Funcs.constrain(1 - splash.life / splash.maxLife, 0, 1);
