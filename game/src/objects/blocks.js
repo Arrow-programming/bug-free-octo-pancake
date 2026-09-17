@@ -81,8 +81,8 @@ export class Block {
 }
 
 export class WaterBlock extends Block {
-	constructor({x, y} = {}) {
-		super({x:x, y:y, type:"water"});
+	constructor({x, y, isSolid} = {}) {
+		super({x:x, y:y, type:"water", isSolid:isSolid});
 	}
 
 	isTopSurface(blocks) {
@@ -99,8 +99,8 @@ export class WaterBlock extends Block {
 }
 
 export class FireBlock extends Block {
-	constructor({x, y, w=BLOCK_SIZE, h = BLOCK_SIZE} = {}) {
-		super({x:x, y:y, w:w, h:h, type:"fire"});
+	constructor({x, y, w=BLOCK_SIZE, h = BLOCK_SIZE, isSolid} = {}) {
+		super({x:x, y:y, w:w, h:h, type:"fire", isSolid:isSolid});
 		const riseHeight = h * 4;
 		this.fire = new Fire(x, y - (riseHeight - h), w, riseHeight);
 	}

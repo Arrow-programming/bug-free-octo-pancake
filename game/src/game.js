@@ -121,13 +121,13 @@ export class Game {
 		Water.updatePlayerWaterSpring(dt);
 		player.moveX(dt);
 		for (const block of levels.blocks) {
-			if (block.type !== 'water' && block.type !== 'fire' && player.collideX(block)) {
+			if (block.isSolid && player.collideX(block)) {
 				break;
 			}
 		}
 		player.moveY(dt);
 		for (const block of levels.blocks) {
-			if (block.type !== 'water' && block.type !== 'fire' && player.collideY(block)) {
+			if (block.isSolid && player.collideY(block)) {
 				break;
 			}
 		}
