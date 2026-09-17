@@ -9,6 +9,7 @@ import { setWaterContext, setWaterFrameTime } from './environment/water.js';
 import { Funcs } from './utils/funcs.js';
 import { texStr } from '../assets/noise.js';
 import { input, mouse } from './utils/input.js';
+import { Hitbox } from './utils/hitbox.js'
 
 export class Game {
 	constructor(canvasId = 'game') {
@@ -98,8 +99,8 @@ export class Game {
 		}
 		if (player.health <= 0) {
 			this.timer++;
-			player.v.x = 0;
-			player.v.y = 0;
+			player.xv = 0;
+			player.yv = 0;
 			if (this.timer > 25) {
 				this.timer = 0;
 				player.acceleration = 1600;
@@ -111,22 +112,13 @@ export class Game {
 				player.gravity = 0;
 			}
 		}
-		player.inWater = levels.blocks.some(block => block.type === 'water' && Funcs.edgeCheck(player, block));
+		player.inWater = levels.blocks.some(block => block.type === 'water' && Hitbox.staticCollision(player.hbox, block.hbox));
 		Water.updateWaterSurfaceSegments(dt);
 		Water.updateWaterLightDisturbances(dt);
 		Water.updatePlayerWaterSpring(dt);
 		player.moveX(dt);
-		for (const block of levels.blocks) {
-			if (block.type !== 'water' && player.collideX(block)) {
-				break;
-			}
-		}
 		player.moveY(dt);
-		for (const block of levels.blocks) {
-			if (block.type !== 'water' && player.collideY(block)) {
-				break;
-			}
-		}
+		player.collide(levels.blocks, b => b.type !== 'water');
 		this.rain.update(dt);
 
 		input.update();

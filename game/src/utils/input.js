@@ -10,7 +10,7 @@ class Input {
             Up: ['KeyW', 'ArrowUp'],
             Down: ['KeyS', 'ArrowDown'],
             Pause: ['KeyP', null],
-			Action: ['Space', 'Enter'],
+            Action: ['Space', 'Enter'],
         };
 
         this.pressed = {};
@@ -18,21 +18,21 @@ class Input {
         this.released = {};
 
         document.addEventListener('keydown', (e) => {
-			e.preventDefault();
+            e.preventDefault();
             this.clicked[e.code] = true;
             this.pressed[e.code] = true;
         });
 
         document.addEventListener('keyup', (e) => {
-			e.preventDefault();
+            e.preventDefault();
             this.pressed[e.code] = false;
             this.released[e.code] = true;
         });
     }
 
     update() {
-        for(const k in this.clicked)  this.clicked[k] = false;
-        for(const k in this.released) this.released[k] = false;
+        for (const k in this.clicked) this.clicked[k] = false;
+        for (const k in this.released) this.released[k] = false;
     }
 
     press(action) {
@@ -58,7 +58,7 @@ class Mouse {
         this.released = false;
         this.pressed = false;
 
-		this.inside = true;
+        this.inside = true;
 
         document.addEventListener('mousemove', (e) => {
             this.x = e.clientX;
@@ -75,9 +75,9 @@ class Mouse {
             this.pressed = false;
         });
 
-		document.addEventListener('wheel', (e) => {
-			this.wheel = e.deltaY;
-		});
+        document.addEventListener('wheel', (e) => {
+            this.wheel = e.deltaY;
+        });
     }
 
     update() {
