@@ -2,12 +2,14 @@
  * Holds most of the blocks
  */
 
-import { BLOCK_SIZE } from '../utils/constants.js'
+import { BLOCK_SIZE } from '../utils/constants.js';
 
-import { graphics } from '../graphics.js'
+import { graphics } from '../graphics.js';
 import { gfx } from "../../assets/art/pixelart.js";
 import { drawWaterTile } from '../environment/water.js'
-import { Fire } from '../environment/fire.js'
+import { Fire } from '../environment/fire.js';
+
+import { Hitbox } from '../utils/hitbox.js';
 
 const tileSprite = typeof gfx !== "undefined" && gfx?.tiles?.A?.yyyy ? gfx.tiles.A.yyyy : null;
 
@@ -18,6 +20,13 @@ export class Block {
 		this.y = y;
 		this.w = w;
 		this.h = h;
+
+		this.hbox = Hitbox.fromSize(x, y, w, h);
+		this.pbox = new Hitbox(this.hbox);
+
+		this.xv = 0;
+		this.yv = 0;
+
 		this.type = type;
 		this.isSolid = isSolid;
 	}
@@ -68,12 +77,12 @@ export class Block {
 				graphics.ctx.fillStyle = "rgb(255, 100, 100)";
 				graphics.ctx.fillRect(this.x, this.y, this.w, this.h);
 
-				
+
 				// if(Funcs.edgeCheck(player, this)){
 				//     alert();
 				//     player.health -= 10;
 				// }
-				
+
 				//Physics.collideBox.all(player, this);
 				break;
 		}

@@ -2,6 +2,7 @@ import { PIXEL_SIZE } from '../utils/constants.js';
 import { Funcs } from '../utils/funcs.js';
 import { graphics } from '../graphics.js';
 import * as Water from './water.js';
+import { Player } from '../player/player.js';
 
 const SOLID_TYPES = new Set([
 	'block',
@@ -142,7 +143,7 @@ export class Rain {
 				const ny = this.y + this.vy * dt;
 				if (this.layer.collide) {
 					const player = rain.player;
-					if (nx >= player.x && nx <= player.x + player.w && ny >= player.y && ny <= player.y + player.h) {
+					if (nx >= player.x && nx <= player.x + Player.w && ny >= player.y && ny <= player.y + Player.h) {
 						this.alive = false;
 						rain.spawnSplash(nx, ny);
 						return;

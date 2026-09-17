@@ -3,9 +3,10 @@
  */
 
 
-import { BLOCK_SIZE, PIXEL_SIZE, WATER_SPRING, WATER_WAVE, WATER_LIGHT_BEND, BG_RIPPLE } from '../utils/constants.js'
-import { Funcs } from '../utils/funcs.js'
-import { graphics } from '../graphics.js'
+import { BLOCK_SIZE, PIXEL_SIZE, WATER_SPRING, WATER_WAVE, WATER_LIGHT_BEND, BG_RIPPLE } from '../utils/constants.js';
+import { Funcs } from '../utils/funcs.js';
+import { graphics } from '../graphics.js';
+import { Player } from '../player/player.js';
 
 let player = null;
 let frameTime = 0;
@@ -388,7 +389,7 @@ class WaterSurfaceSegment {
 		for (let i = 0; i < this.count; i++) {
 			this.heights[i] = Funcs.constrain(this.heights[i], -WATER_SPRING.maxDisplacement, WATER_SPRING.maxDisplacement);
 		}
-		
+
 		//tether to the adjacent blocks so no gap
 		if (this.count > 1) {
 			this.heights[0] = 0;
@@ -578,26 +579,26 @@ export function updatePlayerWaterSpring(dt) {
 	if (!player) {
 		return;
 	}
-	const centerX = player.x + player.w / 2;
+	const centerX = player.x + Player.w / 2;
 	const segment = findWaterSegment(centerX);
 	if (!segment) {
 		player.wasInWater = player.inWater;
 		return;
 	}
 	if (player.inWater && !player.wasInWater) {
-		const impactSpeed = Math.max(player.v.y, WATER_SPRING.entryMinImpact) * WATER_SPRING.entrySplashScale;
+		const impactSpeed = Math.max(player.yv, WATER_SPRING.entryMinImpact) * WATER_SPRING.entrySplashScale;
 		splashWaterSurface(centerX, impactSpeed);
 		spawnWaterLightDisturbance(centerX, Funcs.constrain(impactSpeed * 0.5, 10, 60));
-		if (player.v.y > 0) {
-			player.v.y *= WATER_SPRING.entryDamping;
+		if (player.yv > 0) {
+			player.yv *= WATER_SPRING.entryDamping;
 		}
 	} else if (!player.inWater && player.wasInWater) {
-		const exitSpeed = Math.min(player.v.y, -30);
+		const exitSpeed = Math.min(player.yv, -30);
 		splashWaterSurface(centerX, exitSpeed);
 		spawnWaterLightDisturbance(centerX, Funcs.constrain(Math.abs(exitSpeed) * 0.35, 12, 60));
 	}
 	if (player.inWater) {
-		const depthUnderRest = (player.y + player.h) - segment.surfaceY;
+		const depthUnderRest = (player.y + Player.h) - segment.surfaceY;
 		if (depthUnderRest > -WATER_SPRING.pressBand && depthUnderRest < WATER_SPRING.pressBand) {
 			const target = Funcs.constrain(depthUnderRest * 0.18, -WATER_SPRING.maxDisplacement, WATER_SPRING.maxDisplacement);
 			pressWaterSurface(centerX, target, WATER_SPRING.weightPush, dt);
