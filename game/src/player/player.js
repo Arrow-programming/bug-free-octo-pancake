@@ -118,7 +118,7 @@ export class Player {
 
 				Hitbox.sweepCollision(this.pbox, this.hbox, blk.pbox, blk.hbox, scdo);
 				
-				if (scdo.side == HitboxSide.up) {
+				if (scdo.side == HitboxSide.U) {
 					slipvelsum += blk.xv;
 					++slipn;
 					slipprod *= 0.99; // TEMPORARY.
