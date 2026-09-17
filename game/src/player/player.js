@@ -107,6 +107,8 @@ export class Player {
 					te.push_back(blk);
 					continue;
 				}*/
+
+				if (!isSolid) continue;
 				
 				const scdo = { 
 					minimumTime: 0,
