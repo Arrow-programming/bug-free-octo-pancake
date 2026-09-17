@@ -5,10 +5,10 @@
 class Input {
     constructor() {
         this.keyMap = {
-            Right: ['KeyD', 'ArrowRight'],
-            Left: ['KeyA', 'ArrowLeft'],
-            Up: ['KeyW', 'ArrowUp'],
-            Down: ['KeyS', 'ArrowDown'],
+            R: ['KeyD', 'ArrowRight'],
+            L: ['KeyA', 'ArrowLeft'],
+            U: ['KeyW', 'ArrowUp'],
+            D: ['KeyS', 'ArrowDown'],
             Pause: ['KeyP', null],
             Action: ['Space', 'Enter'],
         };

@@ -35,8 +35,8 @@ export class Player {
 			inWater: false, wasInWater: false,
 			action: 'idle',
 			xv: 0, yv: 0,
-			collisionData: { left: false, right: false, top: false, bottom: false },
-			inputs: { left: false, right: false, up: false, down: false },
+			collisionData: { L: false, R: false, U: false, D: false },
+			inputs: { L: false, R: false, U: false, D: false },
 			inWater: false,
 			buffer1: new Array(128),
 			buffer2: new Array(128),
@@ -81,10 +81,10 @@ export class Player {
 			let slipn = 0;
 			let slipprod = 1;
 
-			this.collisionData.right = false;
-			this.collisionData.top = false;
-			this.collisionData.left = false;
-			this.collisionData.bottom = false;
+			this.collisionData.R = false;
+			this.collisionData.U = false;
+			this.collisionData.L = false;
+			this.collisionData.D = false;
 
 			// broad-phase check: is the player touching any elements?
 			this.generateHitbox();
@@ -145,7 +145,7 @@ export class Player {
 							// player on right
 							this.x = Funcs.epsilonUp(b.hbox.x2);
 							this.xv = b.xv;
-							this.collisionData.right = true;
+							this.collisionData.R = true;
 							break;
 						case HitboxSide.U:
 							// player above
@@ -153,7 +153,7 @@ export class Player {
 							// carefully nudge the player's position to avoid floating point precision issues
 							while (this.y + Player.h >= b.hbox.y1) this.y = Funcs.epsilonDown(this.y);
 							this.yv = b.yv;
-							this.collisionData.top = true;
+							this.collisionData.U = true;
 							break;
 						case HitboxSide.L:
 							// player on left
@@ -161,7 +161,7 @@ export class Player {
 							// carefully nudge the player's position to avoid floating point precision issues
 							while (this.x + Player.w >= b.hbox.x1) this.x = Funcs.epsilonDown(this.x);
 							this.xv = b.xv;
-							this.collisionData.left = true;
+							this.collisionData.L = true;
 							break;
 						case HitboxSide.D:
 							// player below
@@ -169,7 +169,7 @@ export class Player {
 							this.yv = b.yv;
 							//coyoteStart = Infinity;
 							this.coyoteVel = b.yv;
-							this.collisionData.bottom = true;
+							this.collisionData.D = true;
 							break;
 						default:
 							console.error(`error: unknown HitboxSide ${s}`);
@@ -208,17 +208,17 @@ export class Player {
 	}
 
 	moveX(dt) {
-		this.inputs.left = input.press('Left');
-		this.inputs.right = input.press('Right');
+		this.inputs.L = input.press('L');
+		this.inputs.R = input.press('R');
 		if (this.inWater) {
 			const surface = this.water.waterSurfaceLineAt(this.x + Player.w / 2);
 			const depth = surface === null ? 999 : surface - this.y;
 			const atSurface = depth > 0 && depth < WATER_SPRING.skimBand;
 			const accel = atSurface ? WATER_SPRING.skimAccelMul : 0.35;
 			const speed = atSurface ? WATER_SPRING.skimSpeedMul : 0.7;
-			if (this.inputs.left) {
+			if (this.inputs.L) {
 				this.xv -= this.acceleration * accel * dt;
-			} else if (this.inputs.right) {
+			} else if (this.inputs.R) {
 				this.xv += this.acceleration * accel * dt;
 			} else {
 				this.xv *= 0.94;
@@ -228,29 +228,29 @@ export class Player {
 			this.action = 'air';
 			return;
 		}
-		if (this.inputs.left && !this.collisionData.left) {
+		if (this.inputs.L && !this.collisionData.L) {
 			this.xv -= this.acceleration * dt;
 			this.dir = -1;
-		} else if (this.inputs.right && !this.collisionData.right) {
+		} else if (this.inputs.R && !this.collisionData.R) {
 			this.xv += this.acceleration * dt;
 			this.dir = 1;
 		} else {
 			this.xv /= this.friction;
 		}
-		this.action = this.collisionData.top ? (Math.abs(this.xv) > 0.1 ? 'walk' : 'idle') : 'air';
+		this.action = this.collisionData.U ? (Math.abs(this.xv) > 0.1 ? 'walk' : 'idle') : 'air';
 		this.x += this.xv * dt;
 		this.xv = Funcs.constrain(this.xv, -this.speed, this.speed);
 	}
 
 	moveY(dt) {
-		this.inputs.up = input.press('Up');
-		this.inputs.down = input.press('Down');
+		this.inputs.U = input.press('U');
+		this.inputs.D = input.press('D');
 		if (this.inWater) {
 			const surface = this.water.waterSurfaceLineAt(this.x + Player.w / 2);
 			const depth = surface === null ? 999 : surface - this.y;
-			if (this.inputs.up) {
+			if (this.inputs.U) {
 				this.yv -= this.jumpPow * 0.55 * dt;
-			} else if (this.inputs.down) {
+			} else if (this.inputs.D) {
 				this.yv += this.jumpPow * 0.6 * dt;
 			} else {
 				this.yv += this.gravity * 0.12 * dt;
@@ -258,7 +258,7 @@ export class Player {
 			if (depth > 0 && depth < WATER_SPRING.tensionBand) {
 				this.yv += WATER_SPRING.surfaceTension * (1 - depth / WATER_SPRING.tensionBand) * dt;
 			}
-			if (depth > 0 && depth < WATER_SPRING.skimBand && !this.inputs.down && (this.inputs.left || this.inputs.right)) {
+			if (depth > 0 && depth < WATER_SPRING.skimBand && !this.inputs.D && (this.inputs.L || this.inputs.R)) {
 				this.yv -= WATER_SPRING.skimLift * dt;
 			}
 			this.yv = Funcs.constrain(this.yv * 0.988, -WATER_SPRING.maxSwimSpeed, WATER_SPRING.maxSwimSpeed);
@@ -266,12 +266,12 @@ export class Player {
 			this.action = 'air';
 			return;
 		}
-		if (this.inputs.up && this.collisionData.top) {
+		if (this.inputs.U && this.collisionData.U) {
 			this.yv = this.coyoteVel - this.jumpPow;
 		}
 		this.yv += this.gravity * dt;
 		this.y += this.yv * dt;
-		if (!this.collisionData.top) {
+		if (!this.collisionData.U) {
 			this.action = 'air';
 		}
 	}
