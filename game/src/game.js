@@ -10,6 +10,7 @@ import { Funcs } from './utils/funcs.js';
 import { texStr } from '../assets/noise.js';
 import { input, mouse } from './utils/input.js';
 import { Hitbox } from './utils/hitbox.js'
+import { Debug } from './utils/debug.js';
 
 export class Game {
 	constructor(canvasId = 'game') {
@@ -36,6 +37,8 @@ export class Game {
 			},
 		});
 		this.rain = new Rain({ player: this.player, levels: this.levels, camera: this.camera, intensity: 'medium' });
+		this.debugLighting = true;
+		this.debug = new Debug(this);
 		this.fireTexture = null;
 		this.running = false;
 	}
@@ -87,7 +90,8 @@ export class Game {
 		const dt = Math.min(Math.max(0, now - this.lastTime) / 1000, 0.1);
 		this.lastTime = now;
 		setWaterFrameTime(now);
-		this.update(dt);
+		this.debug.update(dt);
+		if (!this.debug.freeze) this.update(dt);
 		this.draw(dt);
 		requestAnimationFrame(this.loop);
 	};
@@ -178,7 +182,7 @@ export class Game {
 
 	drawLighting() {
 		const { lighting, grid, levelArray } = this.levels;
-		if (!lighting) {
+		if (!lighting || !this.debugLighting) {
 			return;
 		}
 		for (const { x, y } of grid.visitCells(this.levels.cameraBounds)) {
