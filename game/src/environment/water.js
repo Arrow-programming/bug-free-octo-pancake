@@ -293,14 +293,27 @@ export function drawWaterTile(x, y, w, h, topSurface, buffer1) {
 				waterLightBendNull;
 			const sampleX = cellCenterX + disturbance.bend;
 			
-			const wide = lightStreaksWide.find((s) => s.covers(sampleX, gy, t, depth));
+			let wide = null;
+			for (const s of lightStreaksWide) {
+				if (s.covers(sampleX, gy, t, depth)) {
+					wide = s;
+					break;
+				}
+			}
+
 			if (wide) {
 				graphics.ctx.globalAlpha = Funcs.constrain((wide.opacity + disturbance.glow * 0.6) * depthFade, 0, 1);
 				graphics.ctx.fillStyle = wide.color;
 				graphics.ctx.fillRect(px, py, cellW, cellH);
 			}
 			
-			const fine = lightStreaksFine.find((s) => s.covers(sampleX, gy, t, depth));
+			let fine = null;
+			for (const s of lightStreaksFine) {
+				if (s.covers(sampleX, gy, t, depth)) {
+					fine = s;
+					break;
+				}
+			}
 			if (fine) {
 				graphics.ctx.globalAlpha = Funcs.constrain((fine.opacity + disturbance.glow * 0.4) * depthFade, 0, 1);
 				graphics.ctx.fillStyle = fine.color;
@@ -482,7 +495,7 @@ function pressWaterSurface(worldX, targetDepth, strength, dt) {
 
 function waterIdleWave(worldX, t) {
 	return LcMath.sin(worldX * WATER_SPRING.idleFreq + t * WATER_SPRING.idleSpeed) * WATER_SPRING.idleAmplitude
-		+ LcMath.sin(worldX * WATER_SPRING.idleFreq * 2.3 - t * WATER_SPRING.idleSpeed * 0.7) * WATER_SPRING.idleAmplitude * 0.4;
+		 + LcMath.sin(worldX * WATER_SPRING.idleFreq * 2.3 - t * WATER_SPRING.idleSpeed * 0.7) * WATER_SPRING.idleAmplitude * 0.4;
 }
 
 function waterDisplacementAt(worldX) {
@@ -562,11 +575,12 @@ export function spawnWaterLightDisturbance(worldX, strength) {
 	}
 }
 
+const uwldPredicate = (disturbance) => !disturbance.isDone();
 export function updateWaterLightDisturbances(dt) {
 	for (const disturbance of waterLightDisturbances) {
 		disturbance.update(dt);
 	}
-	waterLightDisturbances.filterInPlace((disturbance) => !disturbance.isDone());
+	waterLightDisturbances.filterInPlace(uwldPredicate);
 }
 
 const buffer = { bend: 0, glow: 0 };
