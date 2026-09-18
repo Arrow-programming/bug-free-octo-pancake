@@ -94,22 +94,26 @@ export class WaterBlock extends Block {
 
 	constructor({x, y, isSolid} = {}) {
 		super({x:x, y:y, type:"water", isSolid:isSolid});
+		this._cacheIsTopSurface = null;
 	}
 
 	static listOfTypes = ["block", "ice", "mud", "tramp", "portal", "hazard"];
 	isTopSurface(blocks) {
-		let above = null;
-		for (const key in blocks) {
-			const block = blocks[key];
-			if (block.x === this.x && block.y === this.y - BLOCK_SIZE) {
-				above = block;
-				break;
+		if (this._cacheIsTopSurface === null) {
+			let above = null;
+			for (const key in blocks) {
+				const block = blocks[key];
+				if (block.x === this.x && block.y === this.y - BLOCK_SIZE) {
+					above = block;
+					break;
+				}
 			}
+			if (!above) return true;
+			const aboveIsWater = above?.type === "water";
+			const aboveIsSolid = above && WaterBlock.listOfTypes.includes(above.type);
+			this._cacheIsTopSurface = !aboveIsWater && !aboveIsSolid;
 		}
-		if (!above) return true;
-		const aboveIsWater = above?.type === "water";
-		const aboveIsSolid = above && WaterBlock.listOfTypes.includes(above.type);
-		return !aboveIsWater && !aboveIsSolid;
+		return this._cacheIsTopSurface;
 	}
 
 	draw(blocks) {

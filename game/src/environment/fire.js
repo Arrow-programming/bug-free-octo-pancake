@@ -103,10 +103,11 @@ export class Fire {
 	}
 
 	mulMBySelf() {
-		this.m00 = this.m00 * this.m00 + this.m01 * this.m10;
-		this.m01 = this.m00 * this.m01 + this.m01 * this.m11;
-		this.m10 = this.m10 * this.m00 + this.m11 * this.m10;
-		this.m11 = this.m10 * this.m01 + this.m11 * this.m11;
+		const m00 = this.m00 * this.m00 + this.m01 * this.m10;
+		const m01 = this.m00 * this.m01 + this.m01 * this.m11;
+		const m10 = this.m10 * this.m00 + this.m11 * this.m10;
+		const m11 = this.m10 * this.m01 + this.m11 * this.m11;
+		this.m00 = m00; this.m01 = m01; this.m10 = m10; this.m11 = m11;
 	}
 
 	sampleAt(x, y) {
@@ -127,7 +128,7 @@ export class Fire {
 		samplePos.y = (samplePos.y - this.ph / 2) * ystretch + this.ph / 2;
 		samplePos.x += this.x / Fire.gridSize;
 		samplePos.y += this.y / Fire.gridSize;
-
+		
 		for (let i = 0; i < Fire.OCTAVES; i++) {
 			posY = this.m00 * samplePos.x + this.m10 * samplePos.y;
 			sphase = LcMath.sin(freq * posY + Fire.SPEED * (this.t + i) * (0.2 * i + 1) + i);

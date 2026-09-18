@@ -52,14 +52,22 @@ class LightStreak {
 		this.anchorDepth = options.anchorDepth ?? 200;
 		
 		this._cacheSway = 0;
+		this._cacheInvalidatorDepth = NaN;
 	}
 
-	centerAt(depth, t, surfaceDepth = null) {
-		const sway = LcMath.sin(depth * this.swayFreq + t * this.swaySpeed + this.swayPhase) * this.swayAmp;
-		const anchorFactor = surfaceDepth === null ? 1 : Funcs.constrain(surfaceDepth / this.anchorDepth, 0, 1);
-		return this.x
+	centerAt(depth, t, surfaceDepth = this.anchorDepth) {
+		const anchorFactor = Funcs.constrain(surfaceDepth / this.anchorDepth, 0, 1);
+		let sway;
+		if (this._cacheInvalidatorDepth != depth) {
+			sway = LcMath.sin(depth * this.swayFreq + t * this.swaySpeed + this.swayPhase) * this.swayAmp;
+			this._cacheSway = sway;
+			this._cacheInvalidatorDepth = depth;
+		} else {
+			sway = this._cacheSway;
+		}
+		return (this.x
 			+ depth * this.tilt
-			+ sway * anchorFactor;
+			+ sway * anchorFactor);
 	}
 
 	covers(worldX, depth, t, surfaceDepth) {
@@ -261,6 +269,7 @@ export function drawWaterTile(x, y, w, h, topSurface, buffer1) {
 
 	const minRow = topSurface ? Math.min(0, ...surfaceRowStarts) : 0;
 
+	graphics.ctx.globalCompositeOperation = "lighter";
 	for (let row = minRow; row < rows; row++) {
 		const gy = baseRow + row;
 		const px0 = x, py = y + row * cellH;
@@ -285,7 +294,6 @@ export function drawWaterTile(x, y, w, h, topSurface, buffer1) {
 			graphics.ctx.globalAlpha = 0.32 + 0.26 * depthFade;
 			graphics.ctx.fillStyle = waterPalette.body;
 			graphics.ctx.fillRect(px, py, cellW, cellH);
-			graphics.ctx.globalCompositeOperation = "lighter";
 			const cellCenterX = px + cellW / 2;
 			const cellCenterY = py + cellH / 2;
 			const disturbance = waterLightDisturbances.length ?
@@ -294,7 +302,8 @@ export function drawWaterTile(x, y, w, h, topSurface, buffer1) {
 			const sampleX = cellCenterX + disturbance.bend;
 			
 			let wide = null;
-			for (const s of lightStreaksWide) {
+			for (let i = 0; i < lightStreaksWide.length; ++i) {
+				const s = lightStreaksWide[i];
 				if (s.covers(sampleX, gy, t, depth)) {
 					wide = s;
 					break;
@@ -308,7 +317,8 @@ export function drawWaterTile(x, y, w, h, topSurface, buffer1) {
 			}
 			
 			let fine = null;
-			for (const s of lightStreaksFine) {
+			for (let i = 0; i < lightStreaksFine.length; ++i) {
+				const s = lightStreaksFine[i];
 				if (s.covers(sampleX, gy, t, depth)) {
 					fine = s;
 					break;
@@ -319,15 +329,26 @@ export function drawWaterTile(x, y, w, h, topSurface, buffer1) {
 				graphics.ctx.fillStyle = fine.color;
 				graphics.ctx.fillRect(px, py, cellW, cellH);
 			}
-			
-			graphics.ctx.globalCompositeOperation = "source-over";
-			
-			/*for (const ripple of waterRipples) {
-				ripple.drawOverTile(graphics.ctx, px, py, cellW, cellH, t);
-			}*/
 		}
 	}
 
+	// Separate phases because switching globalCompositeOperation is apparently overhead.
+
+	/*
+	graphics.ctx.globalCompositeOperation = "source-over";
+	for (let row = minRow; row < rows; row++) {
+		const gy = baseRow + row;
+		const px0 = x, py = y + row * cellH;
+
+		for (let col = 0; col < cols; col++) {
+			const px = px0 + col * cellW;
+			
+			for (const ripple of waterRipples) {
+				ripple.drawOverTile(graphics.ctx, px, py, cellW, cellH, t);
+			}
+		}
+	}
+	*/
 	graphics.ctx.restore();
 }
 

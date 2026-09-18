@@ -185,9 +185,11 @@ export class Game {
 		if (!lighting || !this.debugLighting) {
 			return;
 		}
+		
+		graphics.ctx.fillStyle = "#000";
 		for (const { x, y } of grid.visitCells(this.levels.cameraBounds)) {
 			const symbol = levelArray.get(x, y);
-			graphics.ctx.fillStyle = `rgba(0, 0, 0, ${1 - lighting.getLightLevel(x, y, symbol, this.player, levelArray)})`;
+			graphics.ctx.globalAlpha = 1 - lighting.getLightLevel(x, y, symbol, this.player, levelArray);
 			graphics.ctx.fillRect(grid.cellToWorld(x), grid.cellToWorld(y), grid.size, grid.size);
 		}
 	}
