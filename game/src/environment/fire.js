@@ -55,18 +55,21 @@ export class Fire {
 		}
 		return Fire.#cachedRadiance = cachedRadiance;
 	}
-	constructor(x, y, w, h) {
+	constructor(x, y, w, h, { wallLeft = false, wallRight = false } = {}) {
 		this.x = x;
 		this.y = y;
 		this.w = w;
 		this.h = h;
-		this.t = 0;
+		this.wallLeft = wallLeft;
+		this.wallRight = wallRight;
+		const seed = Math.abs(Math.sin(x * 12.9898) * 43758.5453) % 1;
+		this.t = seed * 100;
 		this.img = graphics.ctx.createImageData(~~(this.w / Fire.gridSize), ~~(this.h / Fire.gridSize));
 		this.canvas = new OffscreenCanvas(this.w / Fire.gridSize, this.h / Fire.gridSize);
 		this.ctx = this.canvas.getContext('2d');
 		this.ctx.imageSmoothingEnabled = false;
 
-		this.ang = 0.77;
+		this.ang = 0.68 + seed * 0.18;
 		this.cosAng = Math.cos(this.ang);
 		this.sinAng = Math.sin(this.ang);
 
@@ -118,6 +121,8 @@ export class Fire {
 		let ystretch = 1 - 0.5 / (1 + (2 * x / this.pw - 1) * (2 * x / this.pw - 1));
 		samplePos.x = (samplePos.x - this.pw / 2) * xstretch + this.pw / 2;
 		samplePos.y = (samplePos.y - this.ph / 2) * ystretch + this.ph / 2;
+		samplePos.x += this.x / Fire.gridSize;
+		samplePos.y += this.y / Fire.gridSize;
 
 		for (let i = 0; i < Fire.OCTAVES; i++) {
 			posY = this.m00 * samplePos.x + this.m10 * samplePos.y;
@@ -138,11 +143,16 @@ export class Fire {
 		this.t += dt * 60;
 		const edgeFeather = Math.max(1, this.pw * 0.22);
 		for (let x = 0; x < this.pw; x += 1) {
-			const edgeDist = Math.min(x, this.pw - 1 - x);
-			const edgeAttenuator = this.smoothstep(0, edgeFeather, edgeDist);
+			const leftAttenuator = this.wallLeft
+				? 0.55 + 0.45 * this.smoothstep(0, edgeFeather, x)
+				: this.smoothstep(0, edgeFeather, x);
+			const rightAttenuator = this.wallRight
+				? 0.55 + 0.45 * this.smoothstep(0, edgeFeather, this.pw - 1 - x)
+				: this.smoothstep(0, edgeFeather, this.pw - 1 - x);
+			const edgeAttenuator = Math.min(leftAttenuator, rightAttenuator);
 			for (let y = 0; y < this.ph; y += 1) {
 				let i = 4 * (this.pw * y + x);
-				let texPos = this.sampleAt(Funcs.mod(x, 600), Funcs.mod(y, 600));
+				let texPos = this.sampleAt(x, y);
 				let texX = ((Math.floor(texPos.x) % 600) + 600) % 600;
 				let texY = ((Math.floor(texPos.y) % 600) + 600) % 600;
 				let texIdx = 4 * (600 * texY + texX);

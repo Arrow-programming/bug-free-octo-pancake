@@ -11,15 +11,15 @@ export const LEVELS = [
 	[
 		'       ',
 		'                    !',
-		'      ',
-		'                  !!',
-		'          FFFFF',
-		'         #####FFF',
-		'        @   %##FF',
-		'         ######FFF',
-		' #WWWWWW##  !!#F#####',
-		'   #WWWWWW##   FF',
-		'  ##WWWWW##### FF',
+		'          # ',
+		'          #      !!',
+		' FFFFF    #FFF  ',
+		'######   #####   ',
+		'        @   %##  ',
+		' F       ######   ',
+		' #WWWWWW##  !!# #####',
+		'   #WWWWWW##     ',
+		'  ##WWWWW#####   ',
 		'  ####WWWWW#####F',
 		'      #WWWWWWWW########',
 		'      #WWWWWWWWWW######',
@@ -113,6 +113,7 @@ export class LevelHandler {
 		this.current = index;
 		this.blocks = [];
 		let longest = 0;
+		const isWall = (row, col) => map[row]?.[col] === '#';
 		for (let row = 0; row < map.length; row++) {
 			const line = map[row];
 			longest = Math.max(longest, line.length);
@@ -128,11 +129,20 @@ export class LevelHandler {
 					while (line[end + 1] === 'F') {
 						end++;
 					}
+					const wallLeft = isWall(row, col - 1);
+					const wallRight = isWall(row, end + 1);
+					const againstWall = isWall(row - 1, col)
+						|| isWall(row + 1, col)
+						|| wallLeft
+						|| wallRight;
 					this.blocks.push(new FireBlock({
 						x:x,
 						y:y, 
 						w:BLOCK_SIZE * (end - col + 1), 
 						h:BLOCK_SIZE, 
+						againstWall,
+						wallLeft,
+						wallRight,
 						isSolid:false
 					}));
 					col = end;

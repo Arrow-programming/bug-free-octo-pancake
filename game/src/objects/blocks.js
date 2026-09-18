@@ -119,10 +119,12 @@ export class WaterBlock extends Block {
 }
 
 export class FireBlock extends Block {
-	constructor({x, y, w=BLOCK_SIZE, h = BLOCK_SIZE, isSolid} = {}) {
+	constructor({x, y, w=BLOCK_SIZE, h = BLOCK_SIZE, againstWall = false, wallLeft = false, wallRight = false, isSolid} = {}) {
 		super({x:x, y:y, w:w, h:h, type:"fire", isSolid:isSolid});
-		const riseHeight = h * 4;
-		this.fire = new Fire(x, y - (riseHeight - h), w, riseHeight);
+		const widthInBlocks = w / BLOCK_SIZE;
+		const wallLift = againstWall ? 0.75 : 0;
+		const riseHeight = h * Math.min(4, 1 + widthInBlocks * 0.5 + wallLift);
+		this.fire = new Fire(x, y - (riseHeight - h), w, riseHeight, { wallLeft, wallRight });
 	}
 	update(tex, dt) {
 		this.fire.update(tex, dt);
