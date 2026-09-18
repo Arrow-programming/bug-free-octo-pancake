@@ -33,6 +33,10 @@ export const Funcs = {
 		return (a1 - b1) / (b2 - b1 - a2 + a1);
 	},
 
+	mod(t, a) {
+		return t - a * Math.floor(t / a);
+	},
+
 	/** Returns number immediately above given in IEEE-754 float representation.
 	 * 
 	 * Notes: NOT thread safe with this function or epsilonDown.
@@ -89,3 +93,13 @@ export const Funcs = {
 		return -this.epsilonUp(-val);
 	}
 };
+
+// monkeh
+Array.prototype.filterInPlace = function(predicate) {
+	let j = 0;
+	for (let i = 0; i < this.length; ++i) {
+		if (predicate(this[i])) this[j++] = this[i];
+	}
+	this.length = j;
+	return this;
+}

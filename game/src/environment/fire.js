@@ -1,5 +1,6 @@
 import { graphics } from '../graphics.js'
-
+import { LcMath } from '../utils/lcMath.js'
+import { Funcs } from '../utils/funcs.js'
 
 // If we use this in other places, might want to move it to helper funcs.js
 //Smooth max function my hero
@@ -64,6 +65,17 @@ export class Fire {
 		this.canvas = new OffscreenCanvas(this.w / Fire.gridSize, this.h / Fire.gridSize);
 		this.ctx = this.canvas.getContext('2d');
 		this.ctx.imageSmoothingEnabled = false;
+
+		this.ang = 0.77;
+		this.cosAng = Math.cos(this.ang);
+		this.sinAng = Math.sin(this.ang);
+
+		this.m00 = 0;
+		this.m01 = 0;
+		this.m10 = 0;
+		this.m11 = 0;
+
+		this.samplePos = { x: 0, y: 0 };
 	}
 	get pw() {
 		return this.w / Fire.gridSize;
@@ -77,56 +89,60 @@ export class Fire {
 	get frequency() {
 		return Fire.FREQUENCY * Fire.gridSize;
 	}
+
+	smoothstep(a, b, x) {
+		let t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+		return t * t * (3 - 2 * t)
+	}
+
+	mulMBySelf() {
+		this.m00 = this.m00 * this.m00 + this.m01 * this.m10;
+		this.m01 = this.m00 * this.m01 + this.m01 * this.m11;
+		this.m10 = this.m10 * this.m00 + this.m11 * this.m10;
+		this.m11 = this.m10 * this.m01 + this.m11 * this.m11;
+	}
+
 	sampleAt(x, y) {
-		let ang = 0.77;
-		let mat = [[Math.cos(ang), -Math.sin(ang)], [Math.sin(ang), Math.cos(ang)]], posY, sphase;
-		let rot = (mat) => {
-			return [[mat[0][0] * mat[0][0] + mat[1][0] * mat[0][1], mat[0][0] * mat[0][1] + mat[0][1] * mat[1][1]], [mat[0][0] * mat[1][0] + mat[1][0] * mat[1][1], mat[0][1] * mat[1][0] + mat[1][1] * mat[1][1]]];
-		}
-		mat = rot(mat);
-		let smoothstep = (a, b, x) => {
-			let t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-			return t * t * (3 - 2 * t)
-		}
-		let samplePos = { 'x': x, 'y': y };
+		this.m00 = this.cosAng;
+		this.m01 = -this.sinAng;
+		this.m10 = this.sinAng;
+		this.m11 = this.cosAng;
+
+		let posY, sphase;
+		this.mulMBySelf();
+		let samplePos = this.samplePos;
+		samplePos.x = x; samplePos.y = y;
 		let freq = this.frequency, mult = this.frequency;
 
-		let xstretch = 2 - 2.5 * smoothstep(-2, 2, (samplePos.y / this.ph - 1 / 2));
+		let xstretch = 2 - 2.5 * this.smoothstep(-2, 2, (samplePos.y / this.ph - 1 / 2));
 		let ystretch = 1 - 0.5 / (1 + (2 * x / this.pw - 1) * (2 * x / this.pw - 1));
 		samplePos.x = (samplePos.x - this.pw / 2) * xstretch + this.pw / 2;
 		samplePos.y = (samplePos.y - this.ph / 2) * ystretch + this.ph / 2;
 
 		for (let i = 0; i < Fire.OCTAVES; i++) {
-			posY = mat[0][0] * samplePos.x + mat[1][0] * samplePos.y;
-			sphase = Math.sin(freq * posY + Fire.SPEED * (this.t + i) * (0.2 * i + 1) + i);
-			samplePos.x += Fire.AMPLITUDE * mat[0][1] * sphase / (mult);
-			samplePos.y += Fire.AMPLITUDE * mat[0][0] * sphase / (mult) + this.t / 6;
+			posY = this.m00 * samplePos.x + this.m10 * samplePos.y;
+			sphase = LcMath.sin(freq * posY + Fire.SPEED * (this.t + i) * (0.2 * i + 1) + i);
+			samplePos.x += Fire.AMPLITUDE * this.m01 * sphase / (mult);
+			samplePos.y += Fire.AMPLITUDE * this.m00 * sphase / (mult) + this.t / 6;
 
-			mat = rot(mat);
+			this.mulMBySelf();
 			freq *= Fire.EXP;
 			mult *= Fire.EXP2;
 		}
 		return samplePos;
 	}
+	func(t) {
+		return 1.5 * t * t - 0.3;
+	}
 	update(tex) {
 		this.t++;
-		let mod = (t, a) => {
-			return t - a * Math.floor(t / a);
-		}
-		let func = (t) => {
-			return 1.5 * t * t - 0.3;
-		}
-		let smoothstep = (a, b, x) => {
-			let t = Math.min(1, Math.max(0, (x - a) / (b - a)));
-			return t * t * (3 - 2 * t);
-		}
 		const edgeFeather = Math.max(1, this.pw * 0.22);
 		for (let x = 0; x < this.pw; x += 1) {
 			const edgeDist = Math.min(x, this.pw - 1 - x);
-			const edgeAttenuator = smoothstep(0, edgeFeather, edgeDist);
+			const edgeAttenuator = this.smoothstep(0, edgeFeather, edgeDist);
 			for (let y = 0; y < this.ph; y += 1) {
 				let i = 4 * (this.pw * y + x);
-				let texPos = this.sampleAt(mod(x, 600), mod(y, 600));
+				let texPos = this.sampleAt(Funcs.mod(x, 600), Funcs.mod(y, 600));
 				let texX = ((Math.floor(texPos.x) % 600) + 600) % 600;
 				let texY = ((Math.floor(texPos.y) % 600) + 600) % 600;
 				let texIdx = 4 * (600 * texY + texX);
@@ -136,7 +152,7 @@ export class Fire {
 				this.data[i] = Fire.cachedRadiance[~~temp*3];
 				this.data[i+1] = Fire.cachedRadiance[~~temp*3+1];
 				this.data[i+2] = Fire.cachedRadiance[~~temp*3+2];
-				this.data[i+3] = 0.5*attenuator*Math.pow(150*func(tex.data[texIdx]/255)+127,1.5);
+				this.data[i+3] = 0.5*attenuator*Math.pow(150*this.func(tex.data[texIdx]/255)+127,1.5);
 			}
 		}
 	}

@@ -90,6 +90,8 @@ export class Block {
 }
 
 export class WaterBlock extends Block {
+	#buffer1 = [];
+
 	constructor({x, y, isSolid} = {}) {
 		super({x:x, y:y, type:"water", isSolid:isSolid});
 	}
@@ -103,7 +105,7 @@ export class WaterBlock extends Block {
 
 	draw(blocks) {
 		const topSurface = this.isTopSurface(blocks);
-		drawWaterTile(this.x, this.y, this.w, this.h, topSurface);
+		drawWaterTile(this.x, this.y, this.w, this.h, topSurface, this.#buffer1);
 	}
 }
 

@@ -7,6 +7,7 @@ import { BLOCK_SIZE, PIXEL_SIZE, WATER_SPRING, WATER_WAVE, WATER_LIGHT_BEND, BG_
 import { Funcs } from '../utils/funcs.js';
 import { graphics } from '../graphics.js';
 import { Player } from '../player/player.js';
+import { LcMath } from '../utils/lcMath.js';
 
 let player = null;
 let frameTime = 0;
@@ -49,10 +50,12 @@ class LightStreak {
 		this.swaySpeed = options.swaySpeed ?? 0.2;
 		this.swayPhase = options.swayPhase ?? 0;
 		this.anchorDepth = options.anchorDepth ?? 200;
+		
+		this._cacheSway = 0;
 	}
 
 	centerAt(depth, t, surfaceDepth = null) {
-		const sway = Math.sin(depth * this.swayFreq + t * this.swaySpeed + this.swayPhase) * this.swayAmp;
+		const sway = LcMath.sin(depth * this.swayFreq + t * this.swaySpeed + this.swayPhase) * this.swayAmp;
 		const anchorFactor = surfaceDepth === null ? 1 : Funcs.constrain(surfaceDepth / this.anchorDepth, 0, 1);
 		return this.x
 			+ depth * this.tilt
@@ -106,9 +109,23 @@ class LightRipple {
 		this.driftSpeed = options.driftSpeed ?? 0.3;
 		this.beamWidth = options.beamWidth ?? 1;
 		this.beamHeight = options.beamHeight ?? 1;
-		this.angle = options.angle ?? 0;
+		this._angle = options.angle ?? 0;
 		this.sway = options.sway ?? 0.2;
 		this.penetrationLength = options.penetrationLength ?? 180;
+
+		// Caches
+		this._cacheCosAngle = Math.cos(this._angle);
+		this._cacheSinAngle = Math.sin(this._angle);
+	}
+
+	get angle() {
+		return this._angle;
+	}
+
+	set angle(value) {
+		this._angle = value;
+		this._cacheCosAngle = Math.cos(value);
+		this._cacheSinAngle = Math.sin(value);
 	}
 
 	noise(x, y) {
@@ -120,8 +137,8 @@ class LightRipple {
 		const travel = (t * this.speed + this.phase) * this.direction;
 		const dx = px - (this.x + travel * 0.65);
 		const dy = py - (this.y + Math.sin(dx * 0.018 + this.phase) * this.thickness * 0.12 + Math.cos(t * 0.0006 + this.seed * 0.002) * 8);
-		const along = dx * Math.cos(this.angle) + dy * Math.sin(this.angle);
-		const across = -dx * Math.sin(this.angle) + dy * Math.cos(this.angle);
+		const along = dx * this._cacheCosAngle + dy * this._cacheSinAngle;
+		const across = -dx * this._cacheSinAngle + dy * this._cacheCosAngle;
 		const band = Math.max(0, 1 - Math.abs(along) / (this.length * 0.5));
 		const widthFalloff = Math.max(0, 1 - Math.abs(across) / (this.thickness * 0.5));
 
@@ -217,8 +234,11 @@ function createRandomRipples(count = 12) {
 
 let waterRipples = createRandomRipples(20);
 
+const waterLightBendBuffer = { bend: 0, glow: 0 };
+const waterLightBendNull = { bend: 0, glow: 0 };
+
 //water tile rendering
-export function drawWaterTile(x, y, w, h, topSurface) {
+export function drawWaterTile(x, y, w, h, topSurface, buffer1) {
 	const cols = 9;
 	const rows = 9;
 	const cellW = Math.max(1, Math.floor(w / cols));
@@ -229,7 +249,8 @@ export function drawWaterTile(x, y, w, h, topSurface) {
 	graphics.ctx.save();
 	graphics.ctx.imageSmoothingEnabled = false;
 
-	const surfaceRowStarts = [];
+	buffer1.length = 0;
+	const surfaceRowStarts = buffer1;
 	if (topSurface) {
 		for (let col = 0; col < cols; col++) {
 			const cellCenterX = x + col * cellW + cellW / 2;
@@ -246,7 +267,7 @@ export function drawWaterTile(x, y, w, h, topSurface) {
 
 		for (let col = 0; col < cols; col++) {
 			const px = px0 + col * cellW;
-
+			
 			if (topSurface && row < surfaceRowStarts[col]) {
 				continue;
 			}
@@ -267,28 +288,30 @@ export function drawWaterTile(x, y, w, h, topSurface) {
 			graphics.ctx.globalCompositeOperation = "lighter";
 			const cellCenterX = px + cellW / 2;
 			const cellCenterY = py + cellH / 2;
-			const disturbance = waterLightDisturbances.length ? waterLightBendAt(cellCenterX, cellCenterY) : { bend: 0, glow: 0 };
+			const disturbance = waterLightDisturbances.length ?
+				waterLightBendAt(cellCenterX, cellCenterY, waterLightBendBuffer) :
+				waterLightBendNull;
 			const sampleX = cellCenterX + disturbance.bend;
-
+			
 			const wide = lightStreaksWide.find((s) => s.covers(sampleX, gy, t, depth));
 			if (wide) {
 				graphics.ctx.globalAlpha = Funcs.constrain((wide.opacity + disturbance.glow * 0.6) * depthFade, 0, 1);
 				graphics.ctx.fillStyle = wide.color;
 				graphics.ctx.fillRect(px, py, cellW, cellH);
 			}
-
+			
 			const fine = lightStreaksFine.find((s) => s.covers(sampleX, gy, t, depth));
 			if (fine) {
 				graphics.ctx.globalAlpha = Funcs.constrain((fine.opacity + disturbance.glow * 0.4) * depthFade, 0, 1);
 				graphics.ctx.fillStyle = fine.color;
 				graphics.ctx.fillRect(px, py, cellW, cellH);
 			}
-
+			
 			graphics.ctx.globalCompositeOperation = "source-over";
-
-			for (const ripple of waterRipples) {
+			
+			/*for (const ripple of waterRipples) {
 				ripple.drawOverTile(graphics.ctx, px, py, cellW, cellH, t);
-			}
+			}*/
 		}
 	}
 
@@ -308,6 +331,9 @@ class WaterSurfaceSegment {
 		this.count = Math.max(2, Math.round((endX - startX) / this.spacing) + 1);
 		this.heights = new Float32Array(this.count);
 		this.velocities = new Float32Array(this.count);
+
+		this.leftDeltas = new Float32Array(this.count);
+		this.rightDeltas = new Float32Array(this.count);
 	}
 
 	containsX(worldX) {
@@ -364,8 +390,8 @@ class WaterSurfaceSegment {
 		for (let i = 0; i < this.count; i++) {
 			this.heights[i] += this.velocities[i] * steps;
 		}
-		const leftDeltas = new Float32Array(this.count);
-		const rightDeltas = new Float32Array(this.count);
+		const leftDeltas = this.leftDeltas;
+		const rightDeltas = this.rightDeltas;
 		for (let pass = 0; pass < WATER_SPRING.spreadPasses; pass++) {
 			for (let i = 0; i < this.count; i++) {
 				if (i > 0) {
@@ -455,8 +481,8 @@ function pressWaterSurface(worldX, targetDepth, strength, dt) {
 }
 
 function waterIdleWave(worldX, t) {
-	return Math.sin(worldX * WATER_SPRING.idleFreq + t * WATER_SPRING.idleSpeed) * WATER_SPRING.idleAmplitude
-		+ Math.sin(worldX * WATER_SPRING.idleFreq * 2.3 - t * WATER_SPRING.idleSpeed * 0.7) * WATER_SPRING.idleAmplitude * 0.4;
+	return LcMath.sin(worldX * WATER_SPRING.idleFreq + t * WATER_SPRING.idleSpeed) * WATER_SPRING.idleAmplitude
+		+ LcMath.sin(worldX * WATER_SPRING.idleFreq * 2.3 - t * WATER_SPRING.idleSpeed * 0.7) * WATER_SPRING.idleAmplitude * 0.4;
 }
 
 function waterDisplacementAt(worldX) {
@@ -497,23 +523,29 @@ class WaterLightDisturbance {
 		return this.age > WATER_LIGHT_BEND.lifespan;
 	}
 
-	sample(worldX, worldY) {
+	sample(worldX, worldY, outObject) {
 		const depth = worldY - this.restY;
 		if (depth < 0) {
-			return { bend: 0, glow: 0 };
+			outObject.bend = 0;
+			outObject.glow = 0;
+			return outObject;
 		}
 		const lateral = worldX - this.x;
 		const radial = Math.exp(-(lateral * lateral) / (2 * WATER_LIGHT_BEND.radius * WATER_LIGHT_BEND.radius));
 		if (radial < 0.015) {
-			return { bend: 0, glow: 0 };
+			outObject.bend = 0;
+			outObject.glow = 0;
+			return outObject;
 		}
 		const front = this.age * WATER_LIGHT_BEND.travelSpeed;
 		const wavefrontDist = depth - front;
 		const envelope = Math.exp(-(wavefrontDist * wavefrontDist) / (2 * WATER_LIGHT_BEND.frontWidth * WATER_LIGHT_BEND.frontWidth));
 		const settle = Math.exp(-this.age * WATER_LIGHT_BEND.decayRate);
 		const magnitude = this.strength * radial * envelope * settle;
-		const ripple = Math.sin(wavefrontDist * WATER_LIGHT_BEND.freq - this.age * WATER_LIGHT_BEND.oscSpeed);
-		return { bend: magnitude * ripple, glow: magnitude * Math.max(0, ripple) };
+		const ripple = LcMath.sin(wavefrontDist * WATER_LIGHT_BEND.freq - this.age * WATER_LIGHT_BEND.oscSpeed);
+		outObject.bend = magnitude * ripple;
+		outObject.glow = magnitude * Math.max(0, ripple);
+		return outObject;
 	}
 }
 
@@ -534,18 +566,21 @@ export function updateWaterLightDisturbances(dt) {
 	for (const disturbance of waterLightDisturbances) {
 		disturbance.update(dt);
 	}
-	waterLightDisturbances = waterLightDisturbances.filter((disturbance) => !disturbance.isDone());
+	waterLightDisturbances.filterInPlace((disturbance) => !disturbance.isDone());
 }
 
-function waterLightBendAt(worldX, worldY) {
+const buffer = { bend: 0, glow: 0 };
+function waterLightBendAt(worldX, worldY, outObject) {
 	let bend = 0;
 	let glow = 0;
 	for (const disturbance of waterLightDisturbances) {
-		const sample = disturbance.sample(worldX, worldY);
+		const sample = disturbance.sample(worldX, worldY, buffer);
 		bend += sample.bend;
 		glow += sample.glow;
 	}
-	return { bend, glow };
+	outObject.bend = bend;
+	outObject.glow = glow;
+	return outObject;
 }
 
 
@@ -568,7 +603,7 @@ export function backgroundRippleBendAt(worldX, worldY) {
 		const envelope = Math.exp(-(wavefrontDist * wavefrontDist) / (2 * BG_RIPPLE.frontWidth * BG_RIPPLE.frontWidth));
 		const settle = Math.exp(-disturbance.age * BG_RIPPLE.decayRate);
 		const magnitude = (disturbance.strength / 60) * radial * envelope * settle;
-		const ripple = Math.sin(wavefrontDist * BG_RIPPLE.freq - disturbance.age * BG_RIPPLE.oscSpeed);
+		const ripple = LcMath.sin(wavefrontDist * BG_RIPPLE.freq - disturbance.age * BG_RIPPLE.oscSpeed);
 		bend += magnitude * ripple;
 	}
 	return Funcs.constrain(bend, -1, 1) * BG_RIPPLE.amp;
