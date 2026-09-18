@@ -88,9 +88,10 @@ export class LevelHandler {
 	constructor({ player, camera, onResetRain } = {}) {
 		this.player = player;
 		this.camera = camera;
-		this.onResetRain = onResetRain ?? (() => {});
+		this.onResetRain = onResetRain ?? (() => { });
+		this.blockGrid = null;
 		this.blocks = [];
-		this.blockGrid = new Map();
+		this.mapWidth = 0;
 		this.current = 0;
 		this.width = 0;
 		this.height = 0;
@@ -100,80 +101,68 @@ export class LevelHandler {
 	}
 
 	blockTypes = {
-		"#":"block",
-		"!":"hazard",
-		"%":"portal",
-		"$":"tramp",
-		"_":"mud",
-		"&":"ice",
+		"#": "block",
+		"!": "hazard",
+		"%": "portal",
+		"$": "tramp",
+		"_": "mud",
+		"&": "ice",
 	}
 
 	setup(index) {
 		const map = LEVELS[index] ?? LEVELS[0];
 		this.current = index;
-		this.blocks = [];
 		let longest = 0;
-		const isWall = (row, col) => map[row]?.[col] === '#';
-		for (let row = 0; row < map.length; row++) {
+		for (let row = 0; row < map.length; ++row) longest = Math.max(longest, map[row].length);
+		this.mapWidth = longest;
+
+		this.blockGrid = new Array(longest * map.length).fill(null);
+		this.blocks.length = 0;
+
+		for (let row = 0; row < map.length; ++row) {
 			const line = map[row];
-			longest = Math.max(longest, line.length);
-			for (let col = 0; col < line.length; col++) {
+
+			for (let col = 0; col < line.length; ++col) {
 				const symbol = line[col];
 				const x = col * BLOCK_SIZE, y = row * BLOCK_SIZE;
-				
+
 				if (symbol === 'W') {
-					this.blocks.push(new WaterBlock({x:x, y:y, isSolid:false}));
-				}
-				else if (symbol === 'F') {
+					const sharedWaterReference = new WaterBlock({ x: x, y: y, isSolid: false });
+					this.blockGrid[col + row * this.mapWidth] = sharedWaterReference;
+					this.blocks.push(sharedWaterReference);
+				} else if (symbol === 'F') {
 					let end = col;
-					while (line[end + 1] === 'F') {
-						end++;
-					}
-					const wallLeft = isWall(row, col - 1);
-					const wallRight = isWall(row, end + 1);
-					const againstWall = isWall(row - 1, col)
-						|| isWall(row + 1, col)
-						|| wallLeft
-						|| wallRight;
-					this.blocks.push(new FireBlock({
-						x:x,
-						y:y, 
-						w:BLOCK_SIZE * (end - col + 1), 
-						h:BLOCK_SIZE, 
-						againstWall,
-						wallLeft,
-						wallRight,
-						isSolid:false
-					}));
-					col = end;
-				}
-				else if (symbol === '@') {
+					while (line[end++] === 'F');
+					const sharedFireReference = new FireBlock({
+						x: x,
+						y: y,
+						w: BLOCK_SIZE * (end - col + 1),
+						h: BLOCK_SIZE,
+						isSolid: false
+					});
+					const rmw = row * this.mapWidth;
+					for (; col < end; ++col) this.blockGrid[col + rmw] = sharedFireReference;
+					this.blocks.push(sharedFireReference);
+				} else if (symbol === '@') {
 					this.player.reset(x, y);
-				}
-				else if(symbol !== " "){
-					this.blocks.push(new Block({x:x, y:y, type:this.blockTypes[symbol]}));
+				} else if (symbol !== " ") {
+					const sharedBlockReference = new Block({ x: x, y: y, type: this.blockTypes[symbol] });
+					this.blockGrid[col + row * this.mapWidth] = sharedBlockReference;
+					this.blocks.push(sharedBlockReference);
 				}
 			}
 		}
-		this.blockGrid = new Map();
-		for (const block of this.blocks) {
-			const start = Math.round(block.x / BLOCK_SIZE);
-			const end = Math.round((block.x + block.w) / BLOCK_SIZE) - 1;
-			const row = Math.round(block.y / BLOCK_SIZE);
-			for (let col = start; col <= end; col++) {
-				this.blockGrid.set(`${col},${row}`, block);
-			}
-		}
+
 		this.width = longest * BLOCK_SIZE;
 		this.height = map.length * BLOCK_SIZE;
-		for (const key of Object.keys(Water.waterSurfaceByColumn)) {
+		for (const key in Water.waterSurfaceByColumn) {
 			delete Water.waterSurfaceByColumn[key];
 		}
 		Water.waterLightDisturbances.length = 0;
 		Water.lightStreaksWide.length = 0;
 		Water.lightStreaksFine.length = 0;
-		for (const block of this.blocks) {
-			if (block.type === 'water' && (Water.waterSurfaceByColumn[block.x] === undefined || block.y < Water.waterSurfaceByColumn[block.x])) {
+		for (const block of this.blockGrid) {
+			if (block && block.type === 'water' && (Water.waterSurfaceByColumn[block.x] === undefined || block.y < Water.waterSurfaceByColumn[block.x])) {
 				Water.waterSurfaceByColumn[block.x] = block.y;
 			}
 		}
@@ -220,9 +209,10 @@ export class LevelHandler {
 			},
 		);
 		this.onResetRain(this.current);
+		return 0;
 	}
 
 	blockAt(x, y) {
-		return this.blockGrid.get(`${Math.floor(x / BLOCK_SIZE)},${Math.floor(y / BLOCK_SIZE)}`) ?? null;
+		return this.blockGrid[Math.floor(x / BLOCK_SIZE) + Math.floor(y / BLOCK_SIZE) * this.mapWidth] ?? null;
 	}
 }

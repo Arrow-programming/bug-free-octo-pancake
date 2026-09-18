@@ -121,7 +121,7 @@ class Rasterizer {
 
 	raster() {
 		for (const tri of this.triangles) {
-			this.drawTriangle(tri)
+			this.drawTriangle(tri);
 		}
 	}
 

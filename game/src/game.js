@@ -120,13 +120,13 @@ export class Game {
 				player.gravity = 0;
 			}
 		}
-		player.inWater = levels.blocks.some(block => block.type === 'water' && Hitbox.staticCollision(player.hbox, block.hbox));
+		player.inWater = levels.blockGrid.some(block => block && block.type === 'water' && Hitbox.staticCollision(player.hbox, block.hbox));
 		Water.updateWaterSurfaceSegments(dt);
 		Water.updateWaterLightDisturbances(dt);
 		Water.updatePlayerWaterSpring(dt);
 		player.moveX(dt);
 		player.moveY(dt);
-		player.collide(levels.blocks, b => b.type !== 'water');
+		player.collide(levels.blocks, {});
 		this.rain.update(dt);
 
 		input.update();

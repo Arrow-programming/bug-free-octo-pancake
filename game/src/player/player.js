@@ -60,11 +60,21 @@ export class Player {
     }
 
 	touchingOne(objs) {
-		return objs.some(obj => Hitbox.staticCollision(this.hbox, obj.hbox));
+		for (const obj of objs) {
+            if (Hitbox.staticCollision(this.hbox, obj.hbox)) {
+                return true;
+            }
+        }
+		return 0;
     }
 
 	touchingOneFilter(objs, predicate) {
-		return objs.some(obj => predicate(obj) && Hitbox.staticCollision(this.hbox, obj.hbox));
+		for (const obj of objs) {
+            if (predicate(obj) && Hitbox.staticCollision(this.hbox, obj.hbox)) {
+                return true;
+            }
+        }
+		return 0;
     }
 
 	/**

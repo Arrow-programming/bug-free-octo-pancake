@@ -4,11 +4,11 @@ import { Funcs } from '../utils/funcs.js'
 
 // If we use this in other places, might want to move it to helper funcs.js
 //Smooth max function my hero
-let smax = (a, b, epsilon) => {
+function smax (a, b, epsilon) {
 	return (a + b + Math.sqrt((a - b) * (a - b) + epsilon)) / 2;
 }
 
-let radiation = (temp, alpha = 1) => {
+function radiation(temp, radiationBuffer, alpha = 1) {
 	//There are two regimes here: The "cold" regime under 270 K, in which all of the colors spike to blue/white. Just a linear function.
 	//The second regime is the regime in which the hot metal releases thermal radiation. I just use some cubic interpolation.
 	//To combine the two I use the smooth max function.
@@ -30,7 +30,10 @@ let radiation = (temp, alpha = 1) => {
 	//There is only blue at the very end.
 	y = temp < 0.8 ? 0 : 2 * (temp - 0.8);
 	b = 2 * smax(x, y, 1);
-	return [255 * r, 255 * g, 255 * b];
+	radiationBuffer[0] = 255 * r;
+	radiationBuffer[1] = 255 * g;
+	radiationBuffer[2] = 255 * b;
+	return radiationBuffer;
 }
 
 export class Fire {
@@ -47,8 +50,9 @@ export class Fire {
 			return Fire.#cachedRadiance;
 		}
 		let cachedRadiance = new Float32Array(3000);
+		let radiationBuffer = new Float64Array(3);
 		for (let i = 0; i < 1000; i++) {
-			let result = radiation(i);
+			let result = radiation(i, radiationBuffer);
 			cachedRadiance[3 * i] = result[0];
 			cachedRadiance[3 * i + 1] = result[1];
 			cachedRadiance[3 * i + 2] = result[2];

@@ -130,19 +130,3 @@ export class Raster {
 		return raster;
 	}
 }
-
-// This shenanigan allows for cache-friendly storage. LOL.
-export class SlabAllocator {
-	#blocks;
-	#freeList;
-
-	static #blockSize = 4096;
-	#objectSize;
-
-	constructor(objectSize) {
-		this.#objectSize = objectSize;
-		this.blocks = [new Uint8Array(SlabAllocator.#blockSize * this.#objectSize)];
-		this.freeList = new Array(SlabAllocator.#blockSize);
-		// I'll do this later lol
-	}
-};
