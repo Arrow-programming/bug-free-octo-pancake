@@ -96,10 +96,11 @@ export class WaterBlock extends Block {
 		super({x:x, y:y, type:"water", isSolid:isSolid});
 	}
 
+	static listOfTypes = ["block", "ice", "mud", "tramp", "portal", "hazard"];
 	isTopSurface(blocks) {
 		const above = blocks.find((block) => block.x === this.x && block.y === this.y - BLOCK_SIZE);
 		const aboveIsWater = above?.type === "water";
-		const aboveIsSolid = above && ["block", "ice", "mud", "tramp", "portal", "hazard"].includes(above.type);
+		const aboveIsSolid = above && WaterBlock.listOfTypes.includes(above.type);
 		return !aboveIsWater && !aboveIsSolid;
 	}
 
