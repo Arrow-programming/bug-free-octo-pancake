@@ -3,6 +3,7 @@ import { Funcs } from '../utils/funcs.js';
 import { graphics } from '../graphics.js';
 import * as Water from './water.js';
 import { Player } from '../player/player.js';
+import { LcMath } from '../utils/lcMath.js';
 
 const SOLID_TYPES = new Set([
 	'block',
@@ -18,6 +19,58 @@ const INTENSITY_PRESETS = Object.freeze({
 	medium: { densityScale: 1, maxDrops: 1600 },
 	high: { densityScale: 2, maxDrops: 2400 },
 });
+
+export class Raindrop {
+	x; y; alive = true;
+	vx; vy;
+	rain; layer;
+
+	constructor(x, y, vx, vy, rain, layer) {
+		this.x = x;
+		this.y = y;
+		this.vx = vx;
+		this.vy = vy;
+		this.rain = rain;
+		this.layer = layer;
+	}
+
+	update(dt) {
+		const { rain } = this;
+		const nx = this.x + this.vx * dt;
+		const ny = this.y + this.vy * dt;
+		if (this.layer.collide) {
+			const player = rain.player;
+			if (nx >= player.x && nx <= player.x + Player.w && ny >= player.y && ny <= player.y + Player.h) {
+				this.alive = false;
+				rain.spawnSplash(nx, ny);
+				return;
+			}
+			const block = rain.levels.blockAt(nx, ny);
+			if (block && (block.type === 'water' || SOLID_TYPES.has(block.type))) {
+				this.alive = false;
+				if (block.type === 'water') Water.splashWaterSurface(nx, 12);
+				rain.spawnSplash(nx, Math.min(ny, block.y));
+				return;
+			}
+		}
+		this.x = nx;
+		this.y = ny;
+		if (this.y > rain.levels.height + 900 || this.x < -1200 || this.x > rain.levels.width + 1200) this.alive = false;
+	}
+	draw() {
+		const { rain } = this;
+		const length = this.layer.dropLength ?? 4;
+		const norm = Math.hypot(this.vx, this.vy) || 1;
+		graphics.ctx.fillStyle = this.layer.color;
+		for (let i = 0; i < length; i++) {
+			const leadingToTrailing = length <= 1 ? 0 : i / (length - 1);
+			graphics.ctx.globalAlpha = this.layer.alphaScale * (1 - leadingToTrailing * 0.6);
+			const x = Math.round((this.x - this.vx / norm * i * PIXEL_SIZE + rain.camera.x * (1 - this.layer.parallax)) / PIXEL_SIZE) * PIXEL_SIZE;
+			const y = Math.round((this.y - this.vy / norm * i * PIXEL_SIZE + rain.camera.y * (1 - this.layer.parallax)) / PIXEL_SIZE) * PIXEL_SIZE;
+			graphics.ctx.fillRect(x, y, this.layer.pixelSize, this.layer.pixelSize);
+		}
+	}
+};
 
 export class Rain {
 	constructor({ player, levels, camera, intensity = 'medium' }) {
@@ -100,7 +153,8 @@ export class Rain {
 
 	update(dt) {
 		const angle = this.config.angleDeg * Math.PI / 180;
-		for (const [key, layer] of Object.entries(this.config.layers)) {
+		for (const key in this.config.layers) {
+			const layer = this.config.layers[key];
 			const state = this.layers[key];
 			if (!this.config.enabled) {
 				state.drops.length = 0;
@@ -118,7 +172,9 @@ export class Rain {
 				state.drops.push(this.drop(left + Math.random() * width, spawnY - Math.random() * 260, layer));
 			}
 		}
-		for (const state of Object.values(this.layers)) {
+		
+		for (const key in this.layers) {
+			const state = this.layers[key];
 			for (let i = state.drops.length - 1; i >= 0; i--) {
 				state.drops[i].update(dt);
 				if (!state.drops[i].alive) state.drops.splice(i, 1);
@@ -133,46 +189,12 @@ export class Rain {
 	drop(x, y, layer) {
 		const rain = this;
 		const angle = this.config.angleDeg * Math.PI / 180;
-		return {
-			x, y, alive: true,
-			vx: Math.sin(angle) * this.config.speed * layer.speedScale,
-			vy: Math.cos(angle) * this.config.speed * layer.speedScale,
-			layer,
-			update(dt) {
-				const nx = this.x + this.vx * dt;
-				const ny = this.y + this.vy * dt;
-				if (this.layer.collide) {
-					const player = rain.player;
-					if (nx >= player.x && nx <= player.x + Player.w && ny >= player.y && ny <= player.y + Player.h) {
-						this.alive = false;
-						rain.spawnSplash(nx, ny);
-						return;
-					}
-					const block = rain.levels.blockAt(nx, ny);
-					if (block && (block.type === 'water' || SOLID_TYPES.has(block.type))) {
-						this.alive = false;
-						if (block.type === 'water') Water.splashWaterSurface(nx, 12);
-						rain.spawnSplash(nx, Math.min(ny, block.y));
-						return;
-					}
-				}
-				this.x = nx;
-				this.y = ny;
-				if (this.y > rain.levels.height + 900 || this.x < -1200 || this.x > rain.levels.width + 1200) this.alive = false;
-			},
-			draw() {
-				const length = this.layer.dropLength ?? 4;
-				const norm = Math.hypot(this.vx, this.vy) || 1;
-				graphics.ctx.fillStyle = this.layer.color;
-				for (let i = 0; i < length; i++) {
-					const leadingToTrailing = length <= 1 ? 0 : i / (length - 1);
-					graphics.ctx.globalAlpha = this.layer.alphaScale * (1 - leadingToTrailing * 0.6);
-					const x = Math.round((this.x - this.vx / norm * i * PIXEL_SIZE + rain.camera.x * (1 - this.layer.parallax)) / PIXEL_SIZE) * PIXEL_SIZE;
-					const y = Math.round((this.y - this.vy / norm * i * PIXEL_SIZE + rain.camera.y * (1 - this.layer.parallax)) / PIXEL_SIZE) * PIXEL_SIZE;
-					graphics.ctx.fillRect(x, y, this.layer.pixelSize, this.layer.pixelSize);
-				}
-			},
-		};
+		return new Raindrop(
+			x, y,
+			LcMath.sin(angle) * this.config.speed * layer.speedScale,
+			LcMath.cos(angle) * this.config.speed * layer.speedScale,
+			rain, layer
+		);
 	}
 
 	drawLayer(key) {

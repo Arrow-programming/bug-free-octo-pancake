@@ -21,6 +21,13 @@ export class Lighting {
 		this.playerLightStrength = settings.playerLightStrength ?? 0.95;
 		//how quickly cells update to new light values (0 = no change, 1 = instant)
 		this.smoothing = settings.lightSmooth ?? 0.14;
+
+		this.neighborDirections = [
+			[-1,  0],
+			[ 1,  0],
+			[ 0, -1],
+			[ 0,  1],
+		];
 	}
 
 	//Checks if a cell blocks light
@@ -36,15 +43,10 @@ export class Lighting {
 	//Calculates a cell's light level by diffusing light from neighbors and applying decay
 	getLightLevel(x, y, symbol, player, levelArray) {
 		const targetIsSolid = this.isSolid(symbol);
-		const neighborCoords = [
-			[x - 1, y],
-			[x + 1, y],
-			[x, y - 1],
-			[x, y + 1],
-		];
 
 		let highestNeighbor = 0;
-		for (const [nx, ny] of neighborCoords) {
+		for (const [ndx, ndy] of this.neighborDirections) {
+			const nx = x + ndx, ny = y + ndy;
 			//light only reaches a cell by traveling through open space
 			if (!targetIsSolid && this.isSolid(levelArray?.get(nx, ny))) {
 				continue;
