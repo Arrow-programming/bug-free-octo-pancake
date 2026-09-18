@@ -2,7 +2,6 @@
  * Main lighting stuff
  */
 
-import { LevelHandler } from '../levels.js';
 import { Raster } from '../utils/dataStructures.js'
 import { Funcs } from '../utils/funcs.js'
 
