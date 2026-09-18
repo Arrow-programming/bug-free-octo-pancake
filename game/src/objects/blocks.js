@@ -98,7 +98,15 @@ export class WaterBlock extends Block {
 
 	static listOfTypes = ["block", "ice", "mud", "tramp", "portal", "hazard"];
 	isTopSurface(blocks) {
-		const above = blocks.find((block) => block.x === this.x && block.y === this.y - BLOCK_SIZE);
+		let above = null;
+		for (const key in blocks) {
+			const block = blocks[key];
+			if (block.x === this.x && block.y === this.y - BLOCK_SIZE) {
+				above = block;
+				break;
+			}
+		}
+		if (!above) return true;
 		const aboveIsWater = above?.type === "water";
 		const aboveIsSolid = above && WaterBlock.listOfTypes.includes(above.type);
 		return !aboveIsWater && !aboveIsSolid;
