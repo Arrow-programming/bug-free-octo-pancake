@@ -136,7 +136,7 @@ export class LevelHandler {
 					const sharedFireReference = new FireBlock({
 						x: x,
 						y: y,
-						w: BLOCK_SIZE * (end - col + 1),
+						w: BLOCK_SIZE * (end - col - 1),
 						h: BLOCK_SIZE,
 						isSolid: false
 					});
