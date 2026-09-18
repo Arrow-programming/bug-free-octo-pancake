@@ -137,7 +137,6 @@ export class LevelHandler {
 						w: BLOCK_SIZE * (end - col - 1),
 						h: BLOCK_SIZE,
 						type: BlockTypes.fire,
-						isSolid: false
 					});
 					const rmw = row * this.mapWidth;
 					for (; col < end; ++col) this.blockGrid[col + rmw] = sharedFireReference;
