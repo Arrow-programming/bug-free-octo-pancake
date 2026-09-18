@@ -124,8 +124,8 @@ export class FireBlock extends Block {
 		const riseHeight = h * 4;
 		this.fire = new Fire(x, y - (riseHeight - h), w, riseHeight);
 	}
-	update(tex) {
-		this.fire.update(tex);
+	update(tex, dt) {
+		this.fire.update(tex, dt);
 	}
 	draw() {
 		this.fire.draw(graphics.ctx);

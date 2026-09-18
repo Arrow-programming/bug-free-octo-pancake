@@ -172,7 +172,7 @@ export class Game {
 		this.rain.drawLayer('front');
 		for (const block of this.levels.blocks) {
 			if (block.type === 'fire') {
-				block.update(this.fireTexture);
+				block.update(this.fireTexture, dt);
 				block.draw();
 			}
 		}

@@ -134,8 +134,8 @@ export class Fire {
 	func(t) {
 		return 1.5 * t * t - 0.3;
 	}
-	update(tex) {
-		this.t++;
+	update(tex, dt) {
+		this.t += dt * 60;
 		const edgeFeather = Math.max(1, this.pw * 0.22);
 		for (let x = 0; x < this.pw; x += 1) {
 			const edgeDist = Math.min(x, this.pw - 1 - x);
@@ -152,7 +152,7 @@ export class Fire {
 				this.data[i] = Fire.cachedRadiance[~~temp*3];
 				this.data[i+1] = Fire.cachedRadiance[~~temp*3+1];
 				this.data[i+2] = Fire.cachedRadiance[~~temp*3+2];
-				this.data[i+3] = 0.5*attenuator*Math.pow(150*this.func(tex.data[texIdx]/255)+127,1.5);
+				this.data[i+3] = attenuator*Math.pow(150*this.func(tex.data[texIdx]/255)+123,1.);
 			}
 		}
 	}
