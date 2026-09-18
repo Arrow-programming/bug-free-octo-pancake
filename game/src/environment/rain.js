@@ -4,14 +4,15 @@ import { graphics } from '../graphics.js';
 import * as Water from './water.js';
 import { Player } from '../player/player.js';
 import { LcMath } from '../utils/lcMath.js';
+import { BlockTypes } from '../objects/typedecls.js'
 
 const SOLID_TYPES = new Set([
-	'block',
-	'hazard',
-	'portal',
-	'tramp',
-	'mud',
-	'ice',
+	BlockTypes.block,
+	BlockTypes.hazard,
+	BlockTypes.portal,
+	BlockTypes.tramp,
+	BlockTypes.mud,
+	BlockTypes.ice,
 ]);
 
 const INTENSITY_PRESETS = Object.freeze({
@@ -46,9 +47,9 @@ export class Raindrop {
 				return;
 			}
 			const block = rain.levels.blockAt(nx, ny);
-			if (block && (block.type === 'water' || SOLID_TYPES.has(block.type))) {
+			if (block && (block.type === BlockTypes.water || SOLID_TYPES.has(block.type))) {
 				this.alive = false;
-				if (block.type === 'water') Water.splashWaterSurface(nx, 12);
+				if (block.type === BlockTypes.water) Water.splashWaterSurface(nx, 12);
 				rain.spawnSplash(nx, Math.min(ny, block.y));
 				return;
 			}

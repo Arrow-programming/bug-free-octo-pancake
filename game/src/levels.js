@@ -1,6 +1,7 @@
 import { BLOCK_SIZE, WATER_LIGHT_BEND } from './utils/constants.js';
 import { Bounds, Grid, Raster } from './utils/dataStructures.js';
-import { Block, WaterBlock, FireBlock } from './objects/blocks.js';
+import { Block } from './objects/blocks.js';
+import { BlockTypes } from './objects/typedecls.js';
 import { Lighting } from './environment/lighting.js';
 import * as Water from './environment/water.js';
 
@@ -101,12 +102,13 @@ export class LevelHandler {
 	}
 
 	blockTypes = {
-		"#": "block",
-		"!": "hazard",
-		"%": "portal",
-		"$": "tramp",
-		"_": "mud",
-		"&": "ice",
+		"#": BlockTypes.block,
+		"!": BlockTypes.hazard,
+		"%": BlockTypes.portal,
+		"$": BlockTypes.tramp,
+		"_": BlockTypes.mud,
+		"&": BlockTypes.ice,
+		"W": BlockTypes.water,
 	}
 
 	setup(index) {
@@ -126,18 +128,15 @@ export class LevelHandler {
 				const symbol = line[col];
 				const x = col * BLOCK_SIZE, y = row * BLOCK_SIZE;
 
-				if (symbol === 'W') {
-					const sharedWaterReference = new WaterBlock({ x: x, y: y, isSolid: false });
-					this.blockGrid[col + row * this.mapWidth] = sharedWaterReference;
-					this.blocks.push(sharedWaterReference);
-				} else if (symbol === 'F') {
+				if (symbol === 'F') {
 					let end = col;
 					while (line[end++] === 'F');
-					const sharedFireReference = new FireBlock({
+					const sharedFireReference = new Block({
 						x: x,
 						y: y,
 						w: BLOCK_SIZE * (end - col - 1),
 						h: BLOCK_SIZE,
+						type: BlockTypes.fire,
 						isSolid: false
 					});
 					const rmw = row * this.mapWidth;
@@ -145,7 +144,7 @@ export class LevelHandler {
 					this.blocks.push(sharedFireReference);
 				} else if (symbol === '@') {
 					this.player.reset(x, y);
-				} else if (symbol !== " ") {
+				} else if (symbol !== " " && symbol in this.blockTypes) {
 					const sharedBlockReference = new Block({ x: x, y: y, type: this.blockTypes[symbol] });
 					this.blockGrid[col + row * this.mapWidth] = sharedBlockReference;
 					this.blocks.push(sharedBlockReference);
@@ -162,7 +161,7 @@ export class LevelHandler {
 		Water.lightStreaksWide.length = 0;
 		Water.lightStreaksFine.length = 0;
 		for (const block of this.blockGrid) {
-			if (block && block.type === 'water' && (Water.waterSurfaceByColumn[block.x] === undefined || block.y < Water.waterSurfaceByColumn[block.x])) {
+			if (block && block.type === BlockTypes.water && (Water.waterSurfaceByColumn[block.x] === undefined || block.y < Water.waterSurfaceByColumn[block.x])) {
 				Water.waterSurfaceByColumn[block.x] = block.y;
 			}
 		}
@@ -196,11 +195,6 @@ export class LevelHandler {
 		this.lighting = new Lighting(
 			this.grid,
 			{
-				'!': { emission: 1 },
-				'%': { emission: 1 },
-				'#': { isSolid: true },
-			},
-			{
 				airDecay: 0.9,
 				groundDecay: 0.7,
 				minLevel: 0.08,
@@ -214,5 +208,9 @@ export class LevelHandler {
 
 	blockAt(x, y) {
 		return this.blockGrid[Math.floor(x / BLOCK_SIZE) + Math.floor(y / BLOCK_SIZE) * this.mapWidth] ?? null;
+	}
+
+	blockAtNormalizedScale(x, y) {
+		return this.blockGrid[x + y * this.mapWidth] ?? null;
 	}
 }

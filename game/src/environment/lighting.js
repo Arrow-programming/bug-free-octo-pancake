@@ -2,6 +2,7 @@
  * Main lighting stuff
  */
 
+import { LevelHandler } from '../levels.js';
 import { Raster } from '../utils/dataStructures.js'
 import { Funcs } from '../utils/funcs.js'
 
@@ -10,11 +11,9 @@ export class Lighting {
 	//stores calculated light intensity per cell
 	data = new Raster();
 
-	constructor(grid, palette, settings) {
+	constructor(grid, settings) {
 		//reference to the grid scale
 		this.grid = grid;
-		//mapping of symbols to properties like solidity and emission
-		this.palette = palette;
 		//configuration for light decay and minimum levels
 		this.settings = settings;
 		this.playerLightRadius = settings.playerLightRadius ?? 4;
@@ -30,36 +29,28 @@ export class Lighting {
 		];
 	}
 
-	//Checks if a cell blocks light
-	isSolid(symbol) {
-		return !!(this.palette[symbol]?.isSolid);
-	}
-
-	//Gets base brightness of a cell
-	getEmission(symbol) {
-		return this.palette[symbol]?.emission ?? 0;
-	}
-
 	//Calculates a cell's light level by diffusing light from neighbors and applying decay
-	getLightLevel(x, y, symbol, player, levelArray) {
-		const targetIsSolid = this.isSolid(symbol);
+	getLightLevel(x, y, player, level) {
+		const targetBlock = level.blockAtNormalizedScale(x, y);
+		const targetIsSolid = targetBlock?.isSolid ?? false;
+		const targetEmissivity = targetBlock?.emissivity ?? 0;
 
 		let highestNeighbor = 0;
 		for (const [ndx, ndy] of this.neighborDirections) {
 			const nx = x + ndx, ny = y + ndy;
 			//light only reaches a cell by traveling through open space
-			if (!targetIsSolid && this.isSolid(levelArray?.get(nx, ny))) {
+			if (!targetIsSolid && level.blockAtNormalizedScale(nx, ny)?.isSolid) {
 				continue;
 			}
-			const level = this.data.get(nx, ny);
-			if (level !== null && level > highestNeighbor) {
-				highestNeighbor = level;
+			const lightLevel = this.data.get(nx, ny);
+			if (lightLevel !== null && lightLevel > highestNeighbor) {
+				highestNeighbor = lightLevel;
 			}
 		}
 
 		//apply different decay rates depending on whether the light is passing through a solid or air
 		const propagatedLight = Math.max(highestNeighbor * (targetIsSolid ? this.settings.groundDecay : this.settings.airDecay), this.settings.minLevel);
-
+		
 		const playerCellX = Math.floor(player.x / this.grid.size);
 		const playerCellY = Math.floor(player.y / this.grid.size);
 		const dx = Math.abs(x - playerCellX);
@@ -69,8 +60,7 @@ export class Lighting {
 			? Math.max(this.settings.minLevel, this.playerLightStrength * (1 - distance / this.playerLightRadius))
 			: 0;
 
-		const emission = this.getEmission(symbol);
-		const target = Math.max(propagatedLight, playerLight, emission);
+		const target = Math.max(propagatedLight, playerLight, targetEmissivity);
 		const previous = this.data.get(x, y) ?? target;
 		const smoothed = Funcs.lerp(previous, target, this.smoothing);
 		this.data.set(x, y, smoothed);

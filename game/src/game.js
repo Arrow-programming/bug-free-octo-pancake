@@ -7,10 +7,10 @@ import { Camera } from './systems/camera.js';
 import { Rain } from './environment/rain.js';
 import { setWaterContext, setWaterFrameTime } from './environment/water.js';
 import { Funcs } from './utils/funcs.js';
-import { texStr } from '../assets/noise.js';
 import { input, mouse } from './utils/input.js';
 import { Hitbox } from './utils/hitbox.js'
 import { Debug } from './utils/debug.js';
+import { ready, BlockTypes } from './objects/typedecls.js';
 
 export class Game {
 	constructor(canvasId = 'game') {
@@ -39,12 +39,11 @@ export class Game {
 		this.rain = new Rain({ player: this.player, levels: this.levels, camera: this.camera, intensity: 'medium' });
 		this.debugLighting = true;
 		this.debug = new Debug(this);
-		this.fireTexture = null;
 		this.running = false;
 	}
 
 	async start() {
-		this.fireTexture = await this.loadFireTexture();
+		await ready();
 		this.levels.setup(0);
 		this.running = true;
 		document.addEventListener('visibilitychange', () => {
@@ -56,38 +55,12 @@ export class Game {
 		requestAnimationFrame(this.loop);
 	}
 
-	async loadFireTexture() {
-		const canvas = document.createElement('canvas');
-		canvas.width = 600;
-		canvas.height = 600;
-		const context = canvas.getContext('2d');
-		const image = new Image();
-		image.src = `data:image/png;base64,${texStr.img}`;
-		try {
-			await new Promise((resolve, reject) => {
-				image.onload = resolve;
-				image.onerror = reject;
-			});
-			context.drawImage(image, 0, 0, 600, 600);
-		} catch {
-			const imageData = context.createImageData(600, 600);
-			for (let i = 0; i < imageData.data.length; i += 4) {
-				const value = Math.floor(Math.random() * 255);
-				imageData.data[i] = value;
-				imageData.data[i + 1] = value;
-				imageData.data[i + 2] = value;
-				imageData.data[i + 3] = 255;
-			}
-			context.putImageData(imageData, 0, 0);
-		}
-		return context.getImageData(0, 0, 600, 600);
-	}
-
 	loop = now => {
 		if (!this.running) {
 			return;
 		}
 		const dt = Math.min(Math.max(0, now - this.lastTime) / 1000, 0.1);
+		const fps = Math.floor(1 / dt);
 		this.lastTime = now;
 		setWaterFrameTime(now);
 		this.debug.update(dt);
@@ -120,7 +93,7 @@ export class Game {
 				player.gravity = 0;
 			}
 		}
-		player.inWater = levels.blockGrid.some(block => block && block.type === 'water' && Hitbox.staticCollision(player.hbox, block.hbox));
+		player.inWater = levels.blockGrid.some(block => block && block.type === BlockTypes.water && Hitbox.staticCollision(player.hbox, block.hbox));
 		Water.updateWaterSurfaceSegments(dt);
 		Water.updateWaterLightDisturbances(dt);
 		Water.updatePlayerWaterSpring(dt);
@@ -157,39 +130,38 @@ export class Game {
 		this.camera.update();
 		this.rain.drawLayer('back');
 		for (const block of this.levels.blocks) {
-			if (block.type !== 'water' && block.type !== 'fire') {
+			if (block.type !== BlockTypes.water && block.type !== BlockTypes.fire) {
 				block.draw();
 			}
 		}
 		this.player.draw(dt);
-		this.rain.drawLayer('mid');
+		this.rain.drawLayer(BlockTypes.mid);
 		for (const block of this.levels.blocks) {
-			if (block.type === 'water') {
+			if (block.type === BlockTypes.water) {
 				block.draw(this.levels.blocks);
 			}
 		}
 		this.drawLighting();
 		this.rain.drawLayer('front');
 		for (const block of this.levels.blocks) {
-			if (block.type === 'fire') {
-				block.update(this.fireTexture, dt);
+			if (block.type === BlockTypes.fire) {
+				block.update(dt);
 				block.draw();
 			}
 		}
-		graphics.render()
+		graphics.render();
 		ctx.restore();
 	}
 
 	drawLighting() {
-		const { lighting, grid, levelArray } = this.levels;
+		const { lighting, grid } = this.levels;
 		if (!lighting || !this.debugLighting) {
 			return;
 		}
 		
 		graphics.ctx.fillStyle = "#000";
 		for (const { x, y } of grid.visitCells(this.levels.cameraBounds)) {
-			const symbol = levelArray.get(x, y);
-			graphics.ctx.globalAlpha = 1 - lighting.getLightLevel(x, y, symbol, this.player, levelArray);
+			graphics.ctx.globalAlpha = 1 - lighting.getLightLevel(x, y, this.player, this.levels);
 			graphics.ctx.fillRect(grid.cellToWorld(x), grid.cellToWorld(y), grid.size, grid.size);
 		}
 	}

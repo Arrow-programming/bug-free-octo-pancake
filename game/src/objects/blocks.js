@@ -3,19 +3,14 @@
  */
 
 import { BLOCK_SIZE } from '../utils/constants.js';
-
-import { graphics } from '../graphics.js';
-import { gfx } from "../../assets/art/pixelart.js";
-import { drawWaterTile } from '../environment/water.js'
-import { Fire } from '../environment/fire.js';
-
 import { Hitbox } from '../utils/hitbox.js';
-
-const tileSprite = typeof gfx !== "undefined" && gfx?.tiles?.A?.yyyy ? gfx.tiles.A.yyyy : null;
 
 /* Block */
 export class Block {
-	constructor({x, y, w = BLOCK_SIZE, h = BLOCK_SIZE, type, isSolid = true} = {}) {
+	attributes = {};
+
+	constructor(initializer = {}) {
+		const { x, y, w = BLOCK_SIZE, h = BLOCK_SIZE, type } = initializer;
 		this.x = x;
 		this.y = y;
 		this.w = w;
@@ -28,72 +23,27 @@ export class Block {
 		this.yv = 0;
 
 		this.type = type;
-		this.isSolid = isSolid;
+
+		type.initialize(this, initializer);
 	}
-	draw() {
-		switch (this.type) {
-			case "block":
-				if (tileSprite) {
-					tileSprite.draw(graphics.ctx, this.x, this.y, Math.max(1, this.w / tileSprite.w));
-				} else {
-					graphics.ctx.fillStyle = "rgb(66, 66, 59)";
-					graphics.ctx.fillRect(this.x, this.y, this.w, this.h);
-				}
-				
-				break;
-			case "portal":
-				graphics.ctx.fillStyle = "rgb(200, 100, 200)";
-				graphics.ctx.fillRect(this.x, this.y, this.w, this.h);
-				// if (Funcs.edgeCheck(player, this)) {
-				//     
-				// }
-				//Physics.collideBox.all(player, this);
-				break;
-			case "tramp":
-				graphics.ctx.fillStyle = "rgb(255, 255, 100)";
-				graphics.ctx.fillRect(this.x, this.y, this.w, this.h);
-				// if (Physics.collideBox.touch(player, this)) {
-				//     player.onTramp = true;
-				// }
-				// Physics.collideBox.all(player, this);
-				break;
-			case "ice":
-				graphics.ctx.fillStyle = "rgb(100, 100, 200)";
-				graphics.ctx.fillRect(this.x, this.y, this.w, this.h);
-				// if (Physics.collideBox.touch(player, this)) {
-				//     player.onIce = true;
-				// }
-				// Physics.collideBox.all(player, this);
-				break;
-			case "mud":
-				graphics.ctx.fillStyle = "rgb(100, 30, 0)";
-				graphics.ctx.fillRect(this.x, this.y, this.w, this.h);
-				if (Physics.collideBox.touch(player, this)) {
-					player.onMud = true;
-				}
-				Physics.collideBox.all(player, this);
-				break;
-			case "hazard":
-				graphics.ctx.fillStyle = "rgb(255, 100, 100)";
-				graphics.ctx.fillRect(this.x, this.y, this.w, this.h);
 
+	get isSolid() { return this.type.isSolid; }
+	get emissivity() { return this.type.emissivity; }
 
-				// if(Funcs.edgeCheck(player, this)){
-				//     alert();
-				//     player.health -= 10;
-				// }
+	draw(blocks) {
+		this.type.draw(this, blocks);
+	}
 
-				//Physics.collideBox.all(player, this);
-				break;
-		}
+	update(dt) {
+		this.type.update(this, dt);
 	}
 }
-
+/*
 export class WaterBlock extends Block {
 	#buffer1 = [];
 
-	constructor({x, y, isSolid} = {}) {
-		super({x:x, y:y, type:"water", isSolid:isSolid});
+	constructor({ x, y } = {}) {
+		super({ x: x, y: y, type: "water" });
 		this._cacheIsTopSurface = null;
 	}
 
@@ -123,8 +73,8 @@ export class WaterBlock extends Block {
 }
 
 export class FireBlock extends Block {
-	constructor({x, y, w=BLOCK_SIZE, h = BLOCK_SIZE, againstWall = false, wallLeft = false, wallRight = false, isSolid} = {}) {
-		super({x:x, y:y, w:w, h:h, type:"fire", isSolid:isSolid});
+	constructor({ x, y, w = BLOCK_SIZE, h = BLOCK_SIZE, againstWall = false, wallLeft = false, wallRight = false } = {}) {
+		super({ x: x, y: y, w: w, h: h, type: "fire" });
 		const widthInBlocks = w / BLOCK_SIZE;
 		const wallLift = againstWall ? 0.75 : 0;
 		const riseHeight = h * Math.min(4, 1 + widthInBlocks * 0.5 + wallLift);
@@ -136,4 +86,4 @@ export class FireBlock extends Block {
 	draw() {
 		this.fire.draw(graphics.ctx);
 	}
-}
+}*/
