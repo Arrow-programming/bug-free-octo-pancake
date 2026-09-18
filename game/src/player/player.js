@@ -319,6 +319,6 @@ export class Player {
             this.dir = -1;
         }
 
-		this.animator.run('player', this.x - Player.w / 2 - 10, this.y - Player.h / 2, dt, 'replay', this.dir);
+		this.animator.run('player', this.x - Player.w / 2 - 20, this.y - Player.h / 2, dt, 'replay', this.dir);
 	}
 }
