@@ -2,6 +2,7 @@ import { BLOCK_SIZE, WATER_LIGHT_BEND } from './utils/constants.js';
 import { Bounds, Grid, Raster } from './utils/dataStructures.js';
 import { Block } from './objects/blocks.js';
 import { BlockTypes } from './objects/typedecls.js';
+import { NPC, NPCTypes } from './objects/npcs.js'
 import { Lighting } from './environment/lighting.js';
 import * as Water from './environment/water.js';
 
@@ -86,12 +87,13 @@ export const LEVELS = [
 ];
 
 export class LevelHandler {
-	constructor({ player, camera, onResetRain } = {}) {
+	constructor({ player, camera, npcs, onResetRain } = {}) {
 		this.player = player;
 		this.camera = camera;
+		this.npcs = npcs;
 		this.onResetRain = onResetRain ?? (() => { });
 		this.blockGrid = null;
-		this.blocks = [];
+		this.blocks = []
 		this.mapWidth = 0;
 		this.current = 0;
 		this.width = 0;
@@ -110,6 +112,7 @@ export class LevelHandler {
 		"&": BlockTypes.ice,
 		"W": BlockTypes.water,
 	}
+
 
 	setup(index) {
 		const map = LEVELS[index] ?? LEVELS[0];
@@ -202,6 +205,13 @@ export class LevelHandler {
 			},
 		);
 		this.onResetRain(this.current);
+
+		// test npc
+		this.npcs.add(new NPC({
+			x: 360, y: 260,
+			type: NPCTypes.moth
+		}));
+
 		return 0;
 	}
 

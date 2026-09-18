@@ -6,6 +6,7 @@ import { Player } from './player/player.js';
 import { Camera } from './systems/camera.js';
 import { Rain } from './environment/rain.js';
 import { setWaterContext, setWaterFrameTime } from './environment/water.js';
+import { NPCSystem } from './objects/npcs.js';
 import { Funcs } from './utils/funcs.js';
 import { input, mouse } from './utils/input.js';
 import { Hitbox } from './utils/hitbox.js'
@@ -27,16 +28,20 @@ export class Game {
 			onImpact: power => this.camera?.addShake(power),
 		});
 		setWaterContext(this.player);
+		this.npcSystem = new NPCSystem();
 		this.camera = new Camera(this.player);
 		this.levels = new LevelHandler({
 			player: this.player,
 			camera: this.camera,
+			npcs: this.npcSystem,
 			onResetRain: level => {
 				this.rain?.setIntensity(LEVEL_RAIN_INTENSITIES[level]);
 				this.rain?.reset();
 			},
 		});
 		this.rain = new Rain({ player: this.player, levels: this.levels, camera: this.camera, intensity: 'medium' });
+		
+
 		this.debugLighting = true;
 		this.debug = new Debug(this);
 		this.running = false;
@@ -94,12 +99,17 @@ export class Game {
 			}
 		}
 		player.inWater = levels.blockGrid.some(block => block && block.type === BlockTypes.water && Hitbox.staticCollision(player.hbox, block.hbox));
+		
 		Water.updateWaterSurfaceSegments(dt);
 		Water.updateWaterLightDisturbances(dt);
 		Water.updatePlayerWaterSpring(dt);
+
 		player.moveX(dt);
 		player.moveY(dt);
 		player.collide(levels.blocks, {});
+
+		this.npcSystem.update(levels.blocks, dt)
+
 		this.rain.update(dt);
 
 		input.update();
@@ -149,6 +159,9 @@ export class Game {
 				block.draw();
 			}
 		}
+
+		this.npcSystem.draw();
+
 		graphics.render();
 		ctx.restore();
 	}
