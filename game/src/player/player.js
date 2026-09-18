@@ -26,9 +26,9 @@ export class Player {
 		Object.assign(this, {
 			x, y, w: Player.w, h: Player.h,
 			hbox, pbox: new Hitbox(hbox),
-			health: 10, acceleration: 1600,
-			friction: 1.1, jumpPow: 420,
-			gravity: 600, speed: 200,
+			health: 10, acceleration: 30000,
+			friction: 1.1, jumpPow: 840,
+			gravity: 2400, speed: 200,
 			pastSlip: 0.99,
 			dir: 1, animState: 'idle',
 			animFrame: 0, animTimer: 0,
