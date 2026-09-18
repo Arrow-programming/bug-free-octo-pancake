@@ -7,7 +7,7 @@ export const NPCTypes = {
         w: 20,
         h: 20,
         avoidance: {
-            rad: 40,
+            rad: 50,
             force: 200
         },
         move: function(npc, dt) {
@@ -93,8 +93,6 @@ export class NPC {
     constructor({x, y, type} = {}) {
         this.x = x;
         this.y = y;
-        this.w = NPCTypes[type]?.w ?? 30;
-        this.h = NPCTypes[type]?.h ?? 30;
 
         this.vx = 0;
         this.vy = 0;
@@ -106,6 +104,9 @@ export class NPC {
         this.dead = false;
 
         this.type = type;
+
+        this.w = this.type.w
+        this.h = this.type.h
     }
 
     avoid(objects) {
@@ -126,7 +127,7 @@ export class NPC {
             let nx = dx / dist;
             let ny = dy / dist;
 
-            const strength = (1 - dist / minDist) * force;
+            const strength = force * Math.pow(1 - dist / minDist, 0.7);
 
             this.ax += nx * strength;
             this.ay += ny * strength;
