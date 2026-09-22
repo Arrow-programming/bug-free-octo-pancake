@@ -12,6 +12,7 @@ import { input, mouse } from './utils/input.js';
 import { Hitbox } from './utils/hitbox.js'
 import { Debug } from './utils/debug.js';
 import { ready, BlockTypes } from './objects/typedecls.js';
+import { SLIP_SCALE } from './utils/constants.js';
 
 export class Game {
 	constructor(canvasId = 'game') {
@@ -45,6 +46,8 @@ export class Game {
 		this.debugLighting = true;
 		this.debug = new Debug(this);
 		this.running = false;
+
+		this.buffer1 = { slip: 0, slipvel: 0 };
 	}
 
 	async start() {
@@ -106,7 +109,12 @@ export class Game {
 
 		player.moveX(dt);
 		player.moveY(dt);
-		player.collide(levels.blocks, {});
+
+		player.collide(levels.blocks, this.buffer1);
+		const { slip, slipvel } = this.buffer1;
+
+		player.xv = (player.xv - slipvel) * (slip ** (dt * SLIP_SCALE)) + slipvel;
+    	player.pastSlip = slip;
 
 		this.npcSystem.update(levels.blocks, dt)
 

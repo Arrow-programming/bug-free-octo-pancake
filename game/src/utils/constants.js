@@ -7,7 +7,10 @@ export const PIXEL_SIZE = 5;
 export const GRAVITY = 1;
 
 export const SLOP = BLOCK_SIZE / 1000;
-
+export const SLIP_SCALE = 7; // Scale factor for slip so that we don't have to deal with absurd values.
+export const SLIP = 0.1;
+export const VELOCITY = 300;
+export const JUMP = 900;
 
 // Wasn't sure where to put these, so I put them here for now. They are used in water.js and main.js
 export const WATER_WAVE = {

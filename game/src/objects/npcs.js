@@ -1,9 +1,10 @@
 import { graphics } from '../graphics.js'
+import { BlockState } from './blocktype.js';
 
 export const NPCTypes = {
     moth: {
         name: 'moth',
-        isSolid: false,
+        state: BlockState.NULL,
         w: 20,
         h: 20,
         avoidance: {
@@ -19,7 +20,7 @@ export const NPCTypes = {
         }
     },
     bird: {
-        isSolid: false,
+        state: BlockState.NULL,
         w: 30,
         h: 15,
         avoidance: {

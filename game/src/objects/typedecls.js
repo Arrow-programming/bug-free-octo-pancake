@@ -1,7 +1,7 @@
-import { BlockType } from './blocktype.js'
+import { BlockState, BlockType } from './blocktype.js'
 import { gfx } from "../../assets/art/pixelart.js";
 import { texStr } from '../../assets/noise.js';
-import { BLOCK_SIZE } from '../utils/constants.js';
+import { BLOCK_SIZE, SLIP, VELOCITY, JUMP } from '../utils/constants.js';
 
 import { graphics } from '../graphics.js';
 import { drawWaterTile } from '../environment/water.js'
@@ -41,8 +41,11 @@ export async function ready() {
 export const BlockTypes = {
     block: new BlockType({
         name: "block",
-        isSolid: true,
+        state: BlockState.SOLID,
         emissivity: 0,
+        slip: SLIP,
+        velocity: VELOCITY,
+        jump: JUMP,
         tileSprite: typeof gfx !== "undefined" && gfx?.tiles?.A?.yyyy ? gfx.tiles.A.yyyy : null,
         draw(block, _) {
             if (this.tileSprite) {
@@ -55,7 +58,7 @@ export const BlockTypes = {
     }),
     portal: new BlockType({
         name: "portal",
-        isSolid: false,
+        state: BlockState.NULL,
         emissivity: 1,
         draw(block, _) {
             graphics.ctx.fillStyle = "rgb(200, 100, 200)";
@@ -64,7 +67,7 @@ export const BlockTypes = {
     }),
     tramp: new BlockType({
         name: "tramp",
-        isSolid: false,
+        state: BlockState.NULL,
         emissivity: 0,
         draw(block, _) {
             graphics.ctx.fillStyle = "rgb(255, 255, 100)";
@@ -73,7 +76,10 @@ export const BlockTypes = {
     }),
     ice: new BlockType({
         name: "ice",
-        isSolid: true,
+        state: BlockState.SOLID,
+        slip: 0.9,
+        velocity: VELOCITY,
+        jump: JUMP,
         emissivity: 0,
         draw(block, _) {
             graphics.ctx.fillStyle = "rgb(100, 100, 200)";
@@ -82,7 +88,10 @@ export const BlockTypes = {
     }),
     mud: new BlockType({
         name: "mud",
-        isSolid: true,
+        state: BlockState.SOLID,
+        slip: 0.02,
+        velocity: VELOCITY / 3,
+        jump: JUMP * 5 / 9,
         emissivity: 0,
         draw(block, _) {
             graphics.ctx.fillStyle = "rgb(100, 30, 0)";
@@ -91,7 +100,7 @@ export const BlockTypes = {
     }),
     hazard: new BlockType({
         name: "hazard",
-        isSolid: true,
+        state: BlockState.NULL,
         emissivity: 1,
         draw(block, _) {
             graphics.ctx.fillStyle = "rgb(255, 100, 100)";
@@ -100,7 +109,10 @@ export const BlockTypes = {
     }),
     water: new BlockType({
         name: "water",
-        isSolid: false,
+        state: BlockState.LIQUID,
+        slip: 0.5,
+        velocity: VELOCITY * 2 / 3,
+        jump: JUMP * 1 / 3,
         emissivity: 0,
         initialize(block, _) {
             block.attributes.buffer1 = [];
@@ -118,9 +130,9 @@ export const BlockTypes = {
                     }
                 }
                 if (!above) return true;
-                const aboveIsWater = above?.type.name === "water";
-                const aboveIsSolid = above && this.listOfTypes.includes(above.type.name);
-                block.attributes._cacheIsTopSurface = !aboveIsWater && !aboveIsSolid;
+                const aboveIsLiquid = above?.state == BlockState.LIQUID;
+                const aboveIsSolid = above && above.state == BlockState.SOLID;
+                block.attributes._cacheIsTopSurface = !aboveIsLiquid && !aboveIsSolid;
             }
             return block.attributes._cacheIsTopSurface;
         },
@@ -131,7 +143,7 @@ export const BlockTypes = {
     }),
     fire: new BlockType({
         name: "fire",
-        isSolid: false,
+        state: BlockState.NULL,
         emissivity: 1,
         initialize(block, { x, y, w = BLOCK_SIZE, h = BLOCK_SIZE, againstWall = false, wallLeft = false, wallRight = false }) {
             const widthInBlocks = w / BLOCK_SIZE;

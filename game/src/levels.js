@@ -11,9 +11,9 @@ export const LEVEL_RAIN_INTENSITIES = ['medium', 'medium', 'medium', 'medium', '
 
 export const LEVELS = [
 	[
-		'       ',
-		'                    !',
-		'          # ',
+		'                &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&_________________________#####################&&&&&&&&&&&&&&&&&&&&&',
+		'              __    !',
+		'          #     ',
 		'          #      !!',
 		' FFFFF    #FFF  ',
 		'######    ####   ',
@@ -91,9 +91,9 @@ export class LevelHandler {
 		this.player = player;
 		this.camera = camera;
 		this.npcs = npcs;
-		this.onResetRain = onResetRain ?? (() => { });
+		this.onResetRain = onResetRain ?? (() => {});
 		this.blockGrid = null;
-		this.blocks = []
+		this.blocks = [];
 		this.mapWidth = 0;
 		this.current = 0;
 		this.width = 0;
@@ -111,7 +111,7 @@ export class LevelHandler {
 		"_": BlockTypes.mud,
 		"&": BlockTypes.ice,
 		"W": BlockTypes.water,
-	}
+	};
 
 
 	setup(index) {

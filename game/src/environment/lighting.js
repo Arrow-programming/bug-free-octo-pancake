@@ -2,6 +2,7 @@
  * Main lighting stuff
  */
 
+import { BlockState } from '../objects/blocktype.js';
 import { Raster } from '../utils/dataStructures.js'
 import { Funcs } from '../utils/funcs.js'
 
@@ -31,14 +32,14 @@ export class Lighting {
 	//Calculates a cell's light level by diffusing light from neighbors and applying decay
 	getLightLevel(x, y, player, level) {
 		const targetBlock = level.blockAtNormalizedScale(x, y);
-		const targetIsSolid = targetBlock?.isSolid ?? false;
+		const targetIsSolid = targetBlock?.state == BlockState.SOLID ?? false;
 		const targetEmissivity = targetBlock?.emissivity ?? 0;
 
 		let highestNeighbor = 0;
 		for (const [ndx, ndy] of this.neighborDirections) {
 			const nx = x + ndx, ny = y + ndy;
 			//light only reaches a cell by traveling through open space
-			if (!targetIsSolid && level.blockAtNormalizedScale(nx, ny)?.isSolid) {
+			if (!targetIsSolid && level.blockAtNormalizedScale(nx, ny)?.state == BlockState.SOLID) {
 				continue;
 			}
 			const lightLevel = this.data.get(nx, ny);

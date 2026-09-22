@@ -1,13 +1,15 @@
-import { BLOCK_SIZE, PIXEL_SIZE, WATER_SPRING, SLOP } from '../utils/constants.js';
+import { BLOCK_SIZE, PIXEL_SIZE, WATER_SPRING, SLOP, SLIP, SLIP_SCALE, VELOCITY, JUMP } from '../utils/constants.js';
 import { Funcs } from '../utils/funcs.js';
 import { input } from '../utils/input.js';
 import { gfx } from '../../assets/art/pixelart.js';
 import { graphics } from '../graphics.js';
 import { Hitbox, HitboxSide } from '../utils/hitbox.js';
+import { Animator } from '../sprites.js';
+import { BlockTypes } from '../objects/typedecls.js';
+import { BlockState } from '../objects/blocktype.js';
 
 const timeSort = (first, last) => first.minimumTime - last.minimumTime;
-const blockFilter = el => el.isSolid; //el.type->plattype == pobj::PlatType::block;
-import { Animator } from '../sprites.js';
+const blockFilter = el => el.state == BlockState.SOLID; //el.type->plattype == pobj::PlatType::block;
 
 export class Player {
 	constructor({ water, onPortal, onImpact } = {}) {
@@ -26,10 +28,11 @@ export class Player {
 		Object.assign(this, {
 			x, y, w: Player.w, h: Player.h,
 			hbox, pbox: new Hitbox(hbox),
-			health: 10, acceleration: 30000,
-			friction: 1.1, jumpPow: 840,
-			gravity: 2400, speed: 200,
-			pastSlip: 0.99,
+			health: 10,
+			gravity: 2400,
+			pastSlip: SLIP,
+			pastVel: VELOCITY,
+			pastJump: JUMP,
 			dir: 1, animState: 'idle',
 			animFrame: 0, animTimer: 0,
 			inWater: false, wasInWater: false,
@@ -86,10 +89,12 @@ export class Player {
 		try {
 			// Adapted from xyzyyxx's platformer engine by xyzyyxx.
 
-			// for friction
+			// for friction, velocity, and jump
 			let slipvelsum = 0;
-			let slipn = 0;
 			let slipprod = 1;
+			let velprod = 1;
+			let jumpprod = 1;
+			let N = 0;
 
 			this.collisionData.R = false;
 			this.collisionData.U = false;
@@ -118,28 +123,31 @@ export class Player {
 					continue;
 				}*/
 
-				if (!blk.isSolid) continue;
-				
-				const scdo = { 
-					minimumTime: 0,
-					collisionSide: 0,
-					associatedBlock: blk,
-				};
-
-				Hitbox.sweepCollision(this.pbox, this.hbox, blk.pbox, blk.hbox, scdo);
-				
-				if (scdo.side == HitboxSide.U) {
+				if (blk.state === BlockState.LIQUID) {
 					slipvelsum += blk.xv;
-					++slipn;
-					slipprod *= 0.99; // TEMPORARY.
-					/*
-					if (std::holds_alternative<pobj::BlockPhysData>(blk->type->physData)) {
-						auto slip = std::get<pobj::BlockPhysData>(blk->type->physData).slip;
-						slipprod *= slip;
-					} else panicf("Error: Block type \"{}\" does not have metadata of type pobj::BlockPhysData", blk->type->name.c_str());*/
+					slipprod *= blk.slip;
+					velprod *= blk.velocity;
+					jumpprod *= blk.jump;
+					++N;
+				} else if (blk.state == BlockState.SOLID) {				
+					const scdo = { 
+						minimumTime: 0,
+						collisionSide: 0,
+						associatedBlock: blk,
+					};
+
+					Hitbox.sweepCollision(this.pbox, this.hbox, blk.pbox, blk.hbox, scdo);
+					
+					if (scdo.collisionSide == HitboxSide.U) {
+						slipvelsum += blk.xv;
+						slipprod *= blk.slip;
+						velprod *= blk.velocity;
+						jumpprod *= blk.jump;
+						++N;
+					}
+					
+					tb.push(scdo);
 				}
-				
-				tb.push(scdo);
 			}
 
 			// sort by time
@@ -206,12 +214,18 @@ export class Player {
 			}
 			
 			// friction
-			const slipvel = slipn == 0 ? 0 : slipvelsum / slipn;
-			const slip = slipn == 0 ? this.pastSlip : slipprod ** (1.0 / slipn);
+			const slipvel = N == 0 ? 0 : slipvelsum / N;
+			const slip = N == 0 ? this.pastSlip : slipprod ** (1.0 / N);
 			this.pastSlip = slip;
 
 			outFrictionObject.slip = slip;
 			outFrictionObject.slipvel = slipvel;
+
+			// velocity
+			if (N) this.pastVel = velprod ** (1.0 / N);
+
+			// jump
+			if (N) this.pastJump = jumpprod ** (1.0 / N);
 		} finally {
 			this.pbox.set(this.hbox);
 		}
@@ -220,6 +234,7 @@ export class Player {
 	moveX(dt) {
 		this.inputs.L = input.press('L');
 		this.inputs.R = input.press('R');
+		const dxv = this.pastSlip ? this.pastVel * (-Math.log(this.pastSlip) * SLIP_SCALE) * dt : this.pastVel;
 		if (this.inWater) {
 			const surface = this.water.waterSurfaceLineAt(this.x + Player.w / 2);
 			const depth = surface === null ? 999 : surface - this.y;
@@ -227,29 +242,23 @@ export class Player {
 			const accel = atSurface ? WATER_SPRING.skimAccelMul : 0.35;
 			const speed = atSurface ? WATER_SPRING.skimSpeedMul : 0.7;
 			if (this.inputs.L) {
-				this.xv -= this.acceleration * accel * dt;
+				this.xv -= dxv;
 			} else if (this.inputs.R) {
-				this.xv += this.acceleration * accel * dt;
-			} else {
-				this.xv *= 0.94;
+				this.xv += dxv
 			}
-			this.xv = Funcs.constrain(this.xv, -this.speed * speed, this.speed * speed);
 			this.x += this.xv * dt;
 			this.action = 'air';
 			return;
 		}
 		if (this.inputs.L && !this.collisionData.L) {
-			this.xv -= this.acceleration * dt;
+			this.xv -= dxv
 			this.dir = -1;
 		} else if (this.inputs.R && !this.collisionData.R) {
-			this.xv += this.acceleration * dt;
+			this.xv += dxv
 			this.dir = 1;
-		} else {
-			this.xv /= this.friction;
 		}
 		this.action = this.collisionData.U ? (Math.abs(this.xv) > 0.1 ? 'walk' : 'idle') : 'air';
 		this.x += this.xv * dt;
-		this.xv = Funcs.constrain(this.xv, -this.speed, this.speed);
 	}
 
 	moveY(dt) {
@@ -259,9 +268,9 @@ export class Player {
 			const surface = this.water.waterSurfaceLineAt(this.x + Player.w / 2);
 			const depth = surface === null ? 999 : surface - this.y;
 			if (this.inputs.U) {
-				this.yv -= this.jumpPow * 0.55 * dt;
+				this.yv -= this.pastJump * dt;
 			} else if (this.inputs.D) {
-				this.yv += this.jumpPow * 0.6 * dt;
+				this.yv += this.pastJump * dt + this.gravity * 0.12 * dt;
 			} else {
 				this.yv += this.gravity * 0.12 * dt;
 			}
@@ -277,7 +286,7 @@ export class Player {
 			return;
 		}
 		if (this.inputs.U && this.collisionData.U) {
-			this.yv = this.coyoteVel - this.jumpPow;
+			this.yv = this.coyoteVel - this.pastJump;
 		}
 		this.yv += this.gravity * dt;
 		this.y += this.yv * dt;
