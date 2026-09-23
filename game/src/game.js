@@ -9,23 +9,21 @@ import { setWaterContext, setWaterFrameTime } from './environment/water.js';
 import { NPCSystem } from './objects/npcs.js';
 import { Funcs } from './utils/funcs.js';
 import { input, mouse } from './utils/input.js';
-import { Hitbox } from './utils/hitbox.js'
+import { Hitbox } from './utils/hitbox.js';
 import { Debug } from './utils/debug.js';
 import { ready, BlockTypes } from './objects/typedecls.js';
 import { SLIP_SCALE } from './utils/constants.js';
+import { Bounds } from './utils/dataStructures.js';
 
 export class Game {
 	constructor(canvasId = 'game') {
 		graphics.init(canvasId);
 		this.level = 0;
-		this.nextLevel = true;
 		this.timer = 0;
 		this.lastTime = performance.now();
 		this.player = new Player({
 			water: Water,
-			onPortal: () => {
-				this.nextLevel = true;
-			},
+			onPortal: () => {},
 			onImpact: power => this.camera?.addShake(power),
 		});
 		setWaterContext(this.player);
@@ -52,7 +50,8 @@ export class Game {
 
 	async start() {
 		await ready();
-		this.levels.setup(0);
+		await this.levels.load();
+		this.levels.setup();
 		this.running = true;
 		document.addEventListener('visibilitychange', () => {
 			this.running = !document.hidden;
@@ -79,13 +78,7 @@ export class Game {
 
 	update(dt) {
 		const { player, levels } = this;
-		if (this.nextLevel) {
-			levels.setup(this.level);
-			this.level++;
-			player.health = 10;
-			this.nextLevel = false;
-			localStorage.setItem('storedLevel', this.level);
-		}
+		levels.updateStreaming();
 		if (player.health <= 0) {
 			this.timer++;
 			player.xv = 0;
@@ -94,14 +87,15 @@ export class Game {
 				this.timer = 0;
 				player.acceleration = 1600;
 				player.gravity = 600;
-				levels.setup(Math.max(0, this.level - 1));
+				levels.setup();
+				this.camera.resetPan();
 				player.health = 10;
 			} else {
 				player.acceleration = 0;
 				player.gravity = 0;
 			}
 		}
-		player.inWater = levels.blockGrid.some(block => block && block.type === BlockTypes.water && Hitbox.staticCollision(player.hbox, block.hbox));
+		player.inWater = levels.blocks.some(block => block.type === BlockTypes.water && Hitbox.staticCollision(player.hbox, block.hbox));
 		
 		Water.updateWaterSurfaceSegments(dt);
 		Water.updateWaterLightDisturbances(dt);
@@ -179,9 +173,11 @@ export class Game {
 		if (!lighting || !this.debugLighting) {
 			return;
 		}
-		
+		const viewWidth = graphics.width / this.camera.z;
+		const viewHeight = graphics.height / this.camera.z;
+		const viewBounds = new Bounds(this.player.x - viewWidth / 2 - 2 * grid.size, this.player.y - viewHeight / 2 - 2 * grid.size, viewWidth + 4 * grid.size, viewHeight + 4 * grid.size);
 		graphics.ctx.fillStyle = "#000";
-		for (const { x, y } of grid.visitCells(this.levels.cameraBounds)) {
+		for (const { x, y } of grid.visitCells(viewBounds)) {
 			graphics.ctx.globalAlpha = 1 - lighting.getLightLevel(x, y, this.player, this.levels);
 			graphics.ctx.fillRect(grid.cellToWorld(x), grid.cellToWorld(y), grid.size, grid.size);
 		}

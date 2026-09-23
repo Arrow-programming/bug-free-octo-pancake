@@ -13,8 +13,8 @@ class Graphics {
 	init(canvasId) {
 		this.canvas = document.getElementById(canvasId);
 		this.ctx = this.canvas.getContext('2d');
-		this.canvas.width = window.innerWidth;
-		this.canvas.height = window.innerHeight;
+		this.canvas.width = this.canvas.clientWidth || window.innerWidth;
+		this.canvas.height = this.canvas.clientHeight || window.innerHeight;
 		this.width = this.canvas.width;
 		this.height = this.canvas.height;
 

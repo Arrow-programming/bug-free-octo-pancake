@@ -7,12 +7,24 @@ export class Camera {
 		this.x = target.x;
 		this.y = target.y;
 		this.z = zoom;
+		this.editorPanX = 0;
+		this.editorPanY = 0;
 		this.shakes = [];
 		this.shake = { x: 0, y: 0 };
 	}
 
 	addShake(power) {
 		this.shakes.push({ power });
+	}
+
+	panBy(screenX, screenY) {
+		this.editorPanX += screenX;
+		this.editorPanY += screenY;
+	}
+
+	resetPan() {
+		this.editorPanX = 0;
+		this.editorPanY = 0;
 	}
 
 	update() {
@@ -28,8 +40,8 @@ export class Camera {
 		if (!this.shakes.length) {
 			this.shake = { x: 0, y: 0 };
 		}
-		this.x = Funcs.lerp(this.x, this.target.x * this.z, 0.1);
-		this.y = Funcs.lerp(this.y, this.target.y * this.z, 0.1);
+		this.x = Funcs.lerp(this.x, this.target.x * this.z + this.editorPanX, 0.1);
+		this.y = Funcs.lerp(this.y, this.target.y * this.z + this.editorPanY, 0.1);
 		graphics.ctx.translate(
 			~~(-this.x + this.shake.x + graphics.width / 2),
 			~~(-this.y + this.shake.y + graphics.height / 2)
