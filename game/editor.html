@@ -903,7 +903,7 @@
 			});
 			document.querySelector('#reset-spawn')?.addEventListener('click', resetPlayerSpawn);
 			async function loadWorld() {
-				const response = await fetch('../game/world.json?editor=' + Date.now());
+				const response = await fetch('./world.json?editor=' + Date.now());
 				world = await response.json();
 				world.map ??= buildContinuousMap(world);
 				history.length = 0;

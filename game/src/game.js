@@ -44,6 +44,8 @@ export class Game {
 		this.debugLighting = true;
 		this.debug = new Debug(this);
 		this.running = false;
+		this.resize = () => graphics.resize();
+		window.addEventListener('resize', this.resize);
 
 		this.buffer1 = { slip: 0, slipvel: 0 };
 	}

@@ -13,6 +13,12 @@ class Graphics {
 	init(canvasId) {
 		this.canvas = document.getElementById(canvasId);
 		this.ctx = this.canvas.getContext('2d');
+		this.resize();
+		this.ctx.imageSmoothingEnabled = false;
+	}
+
+	resize() {
+		if (!this.canvas) return;
 		this.canvas.width = this.canvas.clientWidth || window.innerWidth;
 		this.canvas.height = this.canvas.clientHeight || window.innerHeight;
 		this.width = this.canvas.width;
@@ -25,8 +31,7 @@ class Graphics {
 		this.pixCanvas = new OffscreenCanvas(Math.floor(this.res), Math.floor(this.res / aspect));
         this.pixCtx = this.pixCanvas.getContext('2d');
 
-		this.ctx.imageSmoothingEnabled = false;
-    	this.pixCtx.imageSmoothingEnabled = false;
+		this.pixCtx.imageSmoothingEnabled = false;
 
 	}
 

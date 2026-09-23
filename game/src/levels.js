@@ -82,6 +82,7 @@ export class LevelHandler {
 
 	setup({ preservePlayer = false } = {}) {
 		this.world = { ...this.world, sectionGap: 0 };
+		this.player.wasInWater = false;
 		const previousPlayer = preservePlayer ? {
 			x: this.player.x, y: this.player.y, xv: this.player.xv, yv: this.player.yv,
 			health: this.player.health, pastSlip: this.player.pastSlip, pastVel: this.player.pastVel,
