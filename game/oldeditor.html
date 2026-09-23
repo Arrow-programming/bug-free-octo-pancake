@@ -455,10 +455,9 @@
 				selected = '#',
 				tool = 'select',
 				action = 'Ready',
-				pointer = { valid: false, x: 0, y: 0, clientX: 0, clientY: 0 },
-				move = { valid: false, from: { x: 0, y: 0 }, to: { x: 0, y: 0 }, symbol: '\0' },
-				cell = { x: 0, y: 0 },
-				rectangle = { valid: false, from: { x: 0, y: 0 }, to: { x: 0, y: 0 } },
+				pointer = null,
+				move = null,
+				rectangle = null,
 				history = [],
 				future = [],
 				liveGame = null,
@@ -491,54 +490,46 @@
 				});
 			}
 
-			function longest(array) {
-				let v = 1;
-				for (const item of array) if (item.length > v) v = item.length;
-				return v;
-			}
-
 			function buildContinuousMap(sourceWorld) {
-				const height = longest(sourceWorld.sections);
+				const height = Math.max(1, ...sourceWorld.sections.map(section => section.length));
 				const rows = Array.from({
 					length: height
 				}, () => '');
 				for (const section of sourceWorld.sections) {
-					const width = longest(section);
+					const width = Math.max(1, ...section.map(row => row.length));
 					for (let y = 0; y < height; y++) rows[y] += (section[y] ?? '').padEnd(width, ' ');
 				}
 				return rows;
 			}
 
-			function sectionAtWorldCell(x, y, buffer) {
+			function sectionAtWorldCell(cell) {
 				let originX = 0;
 				for (const section of world.sections) {
-					const width = longest(section);
-					if (x >= originX && x < originX + width && y >= 0 && y < section.length) {
-						buffer.section = section;
-						buffer.x = x - originX;
-						buffer.y = y;
-						return buffer;
-					}
+					const width = Math.max(1, ...section.map(row => row.length));
+					if (cell.x >= originX && cell.x < originX + width && cell.y >= 0 && cell.y < section.length) return {
+						section,
+						x: cell.x - originX,
+						y: cell.y
+					};
 					originX += width;
 				}
 				return null;
 			}
 
-			const buffer = { section: null, x: 0, y: 0 };
-			function symbolAt(x, y) {
-				if (Array.isArray(world.map)) return world.map[y]?.[x] || ' ';
-				const local = sectionAtWorldCell(x, y, buffer);
+			function symbolAt(cell) {
+				if (Array.isArray(world.map)) return world.map[cell.y]?.[cell.x] || ' ';
+				const local = sectionAtWorldCell(cell);
 				return local?.section[local.y]?.[local.x] || ' ';
 			}
 
-			function setCell(x, y, value) {
+			function setCell(cell, value) {
 				if (Array.isArray(world.map)) {
-					if (x < 0 || y < 0 || y >= world.map.length) return;
-					world.map[y] = world.map[y].padEnd(x + 1, ' ');
-					world.map[y] = world.map[y].substring(0, x) + value + world.map[y].substring(x + 1);
+					if (cell.x < 0 || cell.y < 0 || cell.y >= world.map.length) return;
+					world.map[cell.y] = world.map[cell.y].padEnd(cell.x + 1, ' ');
+					world.map[cell.y] = world.map[cell.y].substring(0, cell.x) + value + world.map[cell.y].substring(cell.x + 1);
 					return;
 				}
-				const local = sectionAtWorldCell(x, y, buffer);
+				const local = sectionAtWorldCell(cell);
 				if (!local || local.x < 0 || local.y < 0) return;
 				local.section[local.y] = local.section[local.y].padEnd(local.x + 1, ' ');
 				local.section[local.y] = local.section[local.y].substring(0, local.x) + value + local.section[local.y].substring(local.x + 1);
@@ -626,8 +617,7 @@
 					selected = symbol;
 					action = `${name} selected`;
 					updateSelectedBlock();
-					const swatch = document.querySelectorAll('.swatch');
-					for (const tile of swatch) tile.classList.toggle('active', tile.dataset.symbol === selected);
+					document.querySelectorAll('.swatch').forEach(tile => tile.classList.toggle('active', tile.dataset.symbol === selected));
 					draw();
 				};
 				palette.append(button);
@@ -662,14 +652,15 @@
 				draw();
 			}
 
-			const worldToScreenX = x => x * liveGame.camera.z - liveGame.camera.x + canvas.width / 2;
-			const worldToScreenY = y => y * liveGame.camera.z - liveGame.camera.y + canvas.height / 2;
-
 			function draw() {
 				ctx.clearRect(0, 0, canvas.width, canvas.height);
 				if (!liveGame) return;
 				const camera = liveGame.camera,
 					size = liveGame.levels.grid?.size || 45;
+				const worldToScreen = (x, y) => ({
+					x: x * camera.z - camera.x + canvas.width / 2,
+					y: y * camera.z - camera.y + canvas.height / 2
+				});
 				const minX = Math.floor((camera.x - canvas.width / 2) / camera.z / size) - 1,
 					maxX = Math.ceil((camera.x + canvas.width / 2) / camera.z / size) + 1;
 				const minY = Math.floor((camera.y - canvas.height / 2) / camera.z / size) - 1,
@@ -678,83 +669,79 @@
 					ctx.strokeStyle = 'rgba(228, 161, 91, .2)';
 					ctx.lineWidth = 1;
 					for (let x = minX; x <= maxX; x++) {
-						const wx = worldToScreenX(x * size);
+						const point = worldToScreen(x * size, 0);
 						ctx.beginPath();
-						ctx.moveTo(Math.round(wx) + .5, 0);
-						ctx.lineTo(Math.round(wx) + .5, canvas.height);
+						ctx.moveTo(Math.round(point.x) + .5, 0);
+						ctx.lineTo(Math.round(point.x) + .5, canvas.height);
 						ctx.stroke();
 					}
 					for (let y = minY; y <= maxY; y++) {
-						const wy = worldToScreenY(y * size);
+						const point = worldToScreen(0, y * size);
 						ctx.beginPath();
-						ctx.moveTo(0, Math.round(wy) + .5);
-						ctx.lineTo(canvas.width, Math.round(wy) + .5);
+						ctx.moveTo(0, Math.round(point.y) + .5);
+						ctx.lineTo(canvas.width, Math.round(point.y) + .5);
 						ctx.stroke();
 					}
 				}
-				if (pointer.valid) {
-					const wx = worldToScreenX(pointer.x * size);
-					const wy = worldToScreenY(pointer.y * size);
-					const scaled = size * camera.z;
+				if (pointer) {
+					const point = worldToScreen(pointer.x * size, pointer.y * size),
+						scaled = size * camera.z;
 					ctx.fillStyle = 'rgba(228, 161, 91, .18)';
 					ctx.strokeStyle = '#e4a15b';
-					ctx.fillRect(wx, wy, scaled, scaled);
-					ctx.strokeRect(wx + .5, wy + .5, scaled - 1, scaled - 1);
+					ctx.fillRect(point.x, point.y, scaled, scaled);
+					ctx.strokeRect(point.x + .5, point.y + .5, scaled - 1, scaled - 1);
 				}
-				if (rectangle.valid) {
+				if (rectangle) {
 					const left = Math.min(rectangle.from.x, rectangle.to.x),
 						right = Math.max(rectangle.from.x, rectangle.to.x);
 					const top = Math.min(rectangle.from.y, rectangle.to.y),
 						bottom = Math.max(rectangle.from.y, rectangle.to.y);
-					const startX = worldToScreenX(left * size),
-						startY = worldToScreenY(top * size),
+					const start = worldToScreen(left * size, top * size),
 						width = (right - left + 1) * size * camera.z,
 						height = (bottom - top + 1) * size * camera.z;
 					ctx.globalAlpha = .42;
-					for (let y = top; y <= bottom; ++y) {
-						for (let x = left; x <= right; ++x) {
-							const pointX = worldToScreenX(x * size);
-							const pointY = worldToScreenY(y * size);
-							renderMaterial(ctx, selected, pointX, pointY, size * camera.z - 1);
+					for (let y = top; y <= bottom; y++)
+						for (let x = left; x <= right; x++) {
+							const point = worldToScreen(x * size, y * size);
+							renderMaterial(ctx, selected, point.x, point.y, size * camera.z - 1);
 						}
-					}
 					ctx.globalAlpha = 1;
 					ctx.fillStyle = 'rgba(228, 161, 91, .16)';
-					ctx.fillRect(startX, startY, width, height);
+					ctx.fillRect(start.x, start.y, width, height);
 					ctx.strokeStyle = '#e5be67';
-					ctx.strokeRect(startX + .5, startY + .5, width - 1, height - 1);
+					ctx.strokeRect(start.x + .5, start.y + .5, width - 1, height - 1);
 				}
-				if (move.valid) {
-					const pointX = worldToScreenX(move.to.x * size),
-						pointY = worldToScreenY(move.to.y * size),
+				if (move) {
+					const point = worldToScreen(move.to.x * size, move.to.y * size),
 						scaled = size * camera.z;
 					ctx.globalAlpha = .68;
-					renderMaterial(ctx, move.symbol, pointX, pointY, scaled - 1);
+					renderMaterial(ctx, move.symbol, point.x, point.y, scaled - 1);
 					ctx.globalAlpha = 1;
 					ctx.strokeStyle = '#e5be67';
-					ctx.strokeRect(pointX + 1, pointY + 1, scaled - 3, scaled - 3);
+					ctx.strokeRect(point.x + 1, point.y + 1, scaled - 3, scaled - 3);
 				}
 				status.textContent = `${action}  |  ${selectedName()}  |  ${snapToggle.checked ? 'Snap' : 'Free'}  |  ${Math.round(liveGame.camera.z * 100)}%  |  ${liveGame.levels.loadedChunks.size} chunks`;
 			}
 
-			function cellAt(event, buffer) {
-				if (!liveGame) {
-					buffer.x = -1;
-					buffer.y = -1;
-					return;
-				}
+			function cellAt(event) {
+				if (!liveGame) return {
+					x: -1,
+					y: -1
+				};
 				const size = liveGame.levels.grid?.size || 45,
 					camera = liveGame.camera;
-				buffer.x = Math.floor((event.offsetX - canvas.width / 2 + camera.x) / camera.z / size),
-				buffer.y = Math.floor((event.offsetY - canvas.height / 2 + camera.y) / camera.z / size)
+				return {
+					x: Math.floor((event.offsetX - canvas.width / 2 + camera.x) / camera.z / size),
+					y: Math.floor((event.offsetY - canvas.height / 2 + camera.y) / camera.z / size)
+				};
 			}
 
-			function paint(x, y, value = selected) {
+			function paint(cell, value = selected) {
 				if (!pointer.stroke) {
 					remember();
 					pointer.stroke = true;
 				}
-				setCell(x, y, value);
+				setCell(cell, value);
 				action = value === ' ' ? 'Erasing tile' : `Painting ${nameFor(value)}`;
 				queuePreviewSync();
 				draw();
@@ -767,21 +754,24 @@
 					top = Math.min(from.y, to.y),
 					bottom = Math.max(from.y, to.y);
 				for (let y = top; y <= bottom; y++)
-					for (let x = left; x <= right; x++) setCell(x, y, selected);
+					for (let x = left; x <= right; x++) setCell({
+						x,
+						y
+					}, selected);
 				action = `Filled ${right - left + 1} x ${bottom - top + 1}`;
 				queuePreviewSync();
 			}
 			canvas.addEventListener('pointerdown', event => {
 				canvas.setPointerCapture(event.pointerId);
-				cellAt(event, cell);
-				pointer.valid = true;
-				pointer.x = cell.x;
-				pointer.y = cell.y;
-				pointer.clientX = event.clientX;
-				pointer.clientY = event.clientY;
+				const cell = cellAt(event);
+				pointer = {
+					...cell,
+					clientX: event.clientX,
+					clientY: event.clientY
+				};
 				if (event.button === 2) {
 					pointer.painting = true;
-					paint(cell.x, cell.y, selected);
+					paint(cell, selected);
 					return;
 				}
 				if (event.button !== 0) return;
@@ -793,44 +783,44 @@
 				}
 				if (tool === 'place-player') {
 					placePlayer(cell);
-					pointer.valid = false;
+					pointer = null;
 					return;
 				}
 				if (tool === 'area-fill') {
-					rectangle.valid = true;
-					rectangle.from.x = cell.x;
-					rectangle.from.y = cell.y;
-					rectangle.to.x = cell.x;
-					rectangle.to.y = cell.y;
+					rectangle = {
+						from: cell,
+						to: cell
+					};
 					action = `Filling ${selectedName()}`;
 					draw();
 					return;
 				}
 				if (tool === 'paint') {
-					paint(cell.x, cell.y, selected);
+					paint(cell, selected);
 					return;
 				}
 				if (tool === 'erase') {
-					paint(cell.x, cell.y, ' ');
+					paint(cell, ' ');
 					return;
 				}
-				const symbol = symbolAt(cell.x, cell.y);
+				const symbol = symbolAt(cell);
 				if (symbol !== ' ') {
 					remember();
-					move.valid = true;
-					move.from.x = cell.x;
-					move.from.y = cell.y;
-					move.to.x = cell.x;
-					move.to.y = cell.y;
-					move.symbol = symbol;
-					setCell(cell.x, cell.y, ' ');
+					move = {
+						from: cell,
+						to: {
+							...cell
+						},
+						symbol
+					};
+					setCell(cell, ' ');
 					action = `Moving ${nameFor(symbol)}`;
 					queuePreviewSync();
 				} else action = 'Ready';
 				draw();
 			});
 			canvas.addEventListener('pointermove', event => {
-				if (!pointer.valid) return;
+				if (!pointer) return;
 				if (pointer.panning) {
 					const dx = event.clientX - pointer.clientX,
 						dy = event.clientY - pointer.clientY;
@@ -840,47 +830,48 @@
 					draw();
 					return;
 				}
-				cellAt(event, cell);
-				pointer.x = cell.x;
-				pointer.y = cell.y;
-				pointer.clientX = event.clientX;
-				pointer.clientY = event.clientY;
-				if (rectangle.valid) {
+				const cell = cellAt(event);
+				pointer = {
+					...pointer,
+					...cell,
+					clientX: event.clientX,
+					clientY: event.clientY
+				};
+				if (rectangle) {
 					rectangle.to = cell;
 					draw();
 					return;
 				}
-				if (move.valid) {
-					if (snapToggle.checked) {
-						move.to.x = cell.x;
-						move.to.y = cell.y;
-					} else {
-						move.to.x = (event.offsetX - canvas.width / 2 + liveGame.camera.x) / liveGame.camera.z / (liveGame.levels.grid?.size || 45);
-						move.to.y = (event.offsetY - canvas.height / 2 + liveGame.camera.y) / liveGame.camera.z / (liveGame.levels.grid?.size || 45);
-					}
-					
+				if (move) {
+					move.to = snapToggle.checked ? cell : {
+						x: (event.offsetX - canvas.width / 2 + liveGame.camera.x) / liveGame.camera.z / (liveGame.levels.grid?.size || 45),
+						y: (event.offsetY - canvas.height / 2 + liveGame.camera.y) / liveGame.camera.z / (liveGame.levels.grid?.size || 45)
+					};
 					draw();
-				} else if (pointer.painting && (event.buttons & 2)) paint(cell.x, cell.y, selected);
-				else if ((tool === 'paint' || tool === 'erase') && (event.buttons & 1)) paint(cell.x, cell.y, tool === 'erase' ? ' ' : selected);
+				} else if (pointer.painting && (event.buttons & 2)) paint(cell, selected);
+				else if ((tool === 'paint' || tool === 'erase') && (event.buttons & 1)) paint(cell, tool === 'erase' ? ' ' : selected);
 				else draw();
 			});
 			canvas.addEventListener('pointerup', event => {
-				if (!pointer.valid) return;
-				if (rectangle.valid) {
+				if (!pointer) return;
+				if (rectangle) {
 					fillRectangle(rectangle.from, rectangle.to);
-					rectangle.valid = false;
-				} else if (move.valid) {
-					setCell(Math.round(move.to.x), Math.round(move.to.y), move.symbol);
+					rectangle = null;
+				} else if (move) {
+					setCell({
+						x: Math.round(move.to.x),
+						y: Math.round(move.to.y)
+					}, move.symbol);
 					action = `Moved ${nameFor(move.symbol)}`;
-					move.valid = false;
+					move = null;
 					queuePreviewSync();
 				} else if (pointer.painting) action = 'Paint complete';
 				else if (pointer.panning) action = 'Pan complete';
-				pointer.valid = false;
+				pointer = null;
 				draw();
 			});
 			canvas.addEventListener('pointerleave', () => {
-				if (!move && !pointer?.painting) pointer.valid = false;
+				if (!move && !pointer?.painting) pointer = null;
 				draw();
 			});
 			canvas.addEventListener('contextmenu', event => event.preventDefault());
