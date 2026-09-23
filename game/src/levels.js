@@ -156,6 +156,30 @@ export class LevelHandler {
 		for (const key in Water.waterSurfaceByColumn) delete Water.waterSurfaceByColumn[key]; Water.waterLightDisturbances.length = 0; Water.lightStreaksWide.length = 0; Water.lightStreaksFine.length = 0;
 		for (const block of this.blocks) if (block.type === BlockTypes.water && (Water.waterSurfaceByColumn[block.x] === undefined || block.y < Water.waterSurfaceByColumn[block.x])) Water.waterSurfaceByColumn[block.x] = block.y;
 		Water.buildWaterSurfaceSegments();
+
+		Water.lightStreaksWide.push(...Water.createLightStreaks(1200, {
+			minWidth: 20,
+			maxWidth: 60,
+			minGap: 30,
+			maxGap: 100,
+			minOpacity: 0.08,
+			maxOpacity: 0.2,
+			palette: ["#dff6ff", "#c7f1ff", "#8edcff"],
+			tilt: 1,
+			swayAmp: 6,
+		}));
+
+		Water.lightStreaksFine.push(...Water.createLightStreaks(1200, {
+			minWidth: 4,
+			maxWidth: 15,
+			minGap: 20,
+			maxGap: 80,
+			minOpacity: 0.1,
+			maxOpacity: 0.3,
+			palette: ["#ffffff", "#dff6ff", "#a7deff"],
+			tilt: 1,
+			swayAmp: 3,
+		}));
 	}
 
 	blockAt(x, y) {

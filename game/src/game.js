@@ -149,7 +149,7 @@ export class Game {
 			}
 		}
 		this.player.draw(dt);
-		this.rain.drawLayer(BlockTypes.mid);
+		this.rain.drawLayer('mid');
 		for (const block of this.levels.blocks) {
 			if (block.type === BlockTypes.water) {
 				block.draw(this.levels.blocks);

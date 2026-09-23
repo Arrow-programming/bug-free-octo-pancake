@@ -268,7 +268,7 @@ export function drawWaterTile(x, y, w, h, topSurface, buffer1) {
 	}
 
 	const minRow = topSurface ? Math.min(0, ...surfaceRowStarts) : 0;
-
+	
 	graphics.ctx.globalCompositeOperation = "lighter";
 	for (let row = minRow; row < rows; row++) {
 		const gy = baseRow + row;
