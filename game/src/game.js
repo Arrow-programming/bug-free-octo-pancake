@@ -149,28 +149,28 @@ this.graphicsComp.addLayer(graphics.canvas);
 
 //RGB light blending test just for debug, I know its silly looking!
 let light0=this.graphicsComp.layers[0].addLight({
-  type: "point",
+  type: "ambient",
   x: 300,
   y: 300,
   radius: 350,
-  color: [0.0, 0.0, 1.0],
-  intensity: 2.0
+  color: [0.75, 0.9, 1.0],
+  intensity: 0.2
 });
 let light1=this.graphicsComp.layers[0].addLight({
   type: "point",
-  x: 200,
-  y: 300,
-  radius: 350,
-  color: [0.0, 1.0, 0.0],
-  intensity: 2.0
+  x: graphics.canvas.width*0.55, 
+  y: graphics.canvas.height*0.75, 
+  radius: 290,
+  color: [1.0, 1.0, 0.2],
+  intensity: 2.5
 });
 let light2=this.graphicsComp.layers[0].addLight({
   type: "point",
-  x: 300,
-  y: 200,
-  radius: 350,
-  color: [1.0, 0.0, 0.0],
-  intensity: 2.0
+  x: graphics.canvas.width*0.45, 
+  y: graphics.canvas.height*0.25, 
+  radius: 290,
+  color: [0.2, 0.2, 1.0],
+  intensity: 2.5
 });
 
 }

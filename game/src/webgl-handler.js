@@ -402,22 +402,33 @@ export class GraphicsUberCompositor {
         
         uniform Light u_lights[32];
         uniform int u_lightCount;
-
+        vec2 absSqrt(vec2 x){
+        return sqrt(abs(x))*sign(x);
+        }
         void main() {
           vec4 tex = texture(u_texture, v_uv);
-
+ 
           vec3 lighting = vec3(0.0);
-
+            vec2 diff=vec2(0,0.003); 
+            vec2 dir=absSqrt(vec2(texture(u_texture,v_uv-diff.yx).r-texture(u_texture,v_uv+diff.yx).r,texture(u_texture,v_uv-diff).r-texture(u_texture,v_uv+diff).r));
+            diff=vec2(0,0.006);
+            dir+=0.65*absSqrt(vec2(texture(u_texture,v_uv-diff.yx).r-texture(u_texture,v_uv+diff.yx).r,texture(u_texture,v_uv-diff).r-texture(u_texture,v_uv+diff).r)); 
+            diff=vec2(0,0.011); 
+            dir+=0.35*absSqrt(vec2(texture(u_texture,v_uv-diff.yx).r-texture(u_texture,v_uv+diff.yx).r,texture(u_texture,v_uv-diff).r-texture(u_texture,v_uv+diff).r)); 
+            vec3 normal=vec3(length(tex.rgb)*vec2(0.4,0.7)+dir*1.5,1.0); 
+            normal=normalize(normal); 
           for (int i = 0; i < 32; i++) {
             if (i >= u_lightCount)
-              break;
-
+              break; 
+ 
             Light light = u_lights[i];
 
             int type = int(light.params.x);
-
-            //Add ambient light
+            
+            
+            //Add ambient light 
             if (type == 0) {
+            float lightmap=dot(vec3(0.0,0.0,1.0),normal)*0.5+0.5;
               lighting +=
                 light.color.rgb *
                 light.color.a;
@@ -435,19 +446,20 @@ export class GraphicsUberCompositor {
 
               float attenuation =
                 0.2/((distance*distance)/(radius*radius)+0.1);
-
+                float lightmap=dot(normalize(vec3(delta,0.01)),normal)*0.5+0.5;
               lighting +=
                 light.color.rgb *
                 light.color.a *
-                attenuation;
-            }
+                attenuation *
+                lightmap; 
+            } 
 
             //Spotlight Need to tune this
             else if (type == 2) {
               vec2 delta =
                 gl_FragCoord.xy -
                 light.position.xy;
-
+            
               float distance = length(delta);
 
               vec2 dir = normalize(delta);
@@ -472,23 +484,26 @@ export class GraphicsUberCompositor {
                   light.params.y,
                   distance
                 );
-
+                float lightmap=dot(normalize(vec3(delta,0.01)),normal)*0.5+0.5;
               lighting +=
                 light.color.rgb *
                 light.color.a *
                 cone *
-                attenuation;
+                attenuation *
+                lightmap;
             }
-          }
 
+          
+          }
+            
           vec3 color =
             (tex.rgb+0.01) * (lighting);
-
+            //color=normal;
           outColor = vec4(
             color,
             tex.a * u_opacity
           );
-        }
+        } 
       `
         });
 
