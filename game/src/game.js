@@ -1,5 +1,6 @@
 import { gfx } from '../assets/art/pixelart.js';
 import { graphics } from './graphics.js';
+import {GraphicsUberCompositor} from './webgl-handler.js';
 import * as Water from './environment/water.js';
 import { LEVEL_RAIN_INTENSITIES, LevelHandler } from './levels.js';
 import { Player } from './player/player.js';
@@ -15,9 +16,15 @@ import { ready, BlockTypes } from './objects/typedecls.js';
 import { SLIP_SCALE } from './utils/constants.js';
 import { Bounds } from './utils/dataStructures.js';
 
+ 
+
+
+
+
 export class Game {
 	constructor(canvasId = 'game') {
 		graphics.init(canvasId);
+		
 		this.level = 0;
 		this.timer = 0;
 		this.lastTime = performance.now();
@@ -61,6 +68,7 @@ export class Game {
 				requestAnimationFrame(this.loop);
 			}
 		});
+		this.runStuff();
 		requestAnimationFrame(this.loop);
 	}
 
@@ -96,7 +104,7 @@ export class Game {
 				player.acceleration = 0;
 				player.gravity = 0;
 			}
-		}
+		} 
 		player.inWater = levels.blocks.some(block => block.type === BlockTypes.water && Hitbox.staticCollision(player.hbox, block.hbox));
 		
 		Water.updateWaterSurfaceSegments(dt);
@@ -119,6 +127,55 @@ export class Game {
 		input.update();
 		mouse.update();
 	}
+
+runStuff(){
+
+    /* 
+TBD where this should go but FIX THIS LATER
+    */
+
+//WEBGL needs something to render to that actually
+//belongs to it.  So this is a temporary canvas.
+//I think this is fine but there are other ways to do
+//this that are different maybe not better. 
+this.webglCanvas=new OffscreenCanvas(graphics.canvas.width,graphics.canvas.height)
+this.graphicsComp = new GraphicsUberCompositor(this.webglCanvas, {
+  width: graphics.canvas.width, 
+  height: graphics.canvas.height
+}); 
+
+this.graphicsComp.addLayer(graphics.canvas); 
+
+
+//RGB light blending test just for debug, I know its silly looking!
+let light0=this.graphicsComp.layers[0].addLight({
+  type: "point",
+  x: 300,
+  y: 300,
+  radius: 350,
+  color: [0.0, 0.0, 1.0],
+  intensity: 2.0
+});
+let light1=this.graphicsComp.layers[0].addLight({
+  type: "point",
+  x: 200,
+  y: 300,
+  radius: 350,
+  color: [0.0, 1.0, 0.0],
+  intensity: 2.0
+});
+let light2=this.graphicsComp.layers[0].addLight({
+  type: "point",
+  x: 300,
+  y: 200,
+  radius: 350,
+  color: [1.0, 0.0, 0.0],
+  intensity: 2.0
+});
+
+}
+
+
 
 	draw(dt) {
 		const { ctx } = graphics;
@@ -163,11 +220,15 @@ export class Game {
 				block.draw();
 			}
 		}
-
+ 
 		this.npcSystem.draw();
 
 		graphics.render();
-		ctx.restore();
+		ctx.restore(); 
+		//Throwing this at the end of the rendering for now.  FIX THIS LATER
+     
+        this.graphicsComp.render();
+        ctx.drawImage(this.webglCanvas,0,0);
 	}
 
 	drawLighting() {
